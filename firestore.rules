@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Profile & Storage tracking
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.userId == userId &&
+               data.storageUsed is number &&
+               data.storageUsed >= 0 &&
+               data.storageUsed <= 10485760 &&
+               data.keys().hasAll(['userId', 'storageUsed', 'updatedAt']) &&
+               data.keys().size() <= 4;
+      }
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['storageUsed', 'updatedAt']);
+    }
+
+    // Clipboard Items
+    match /clipboardItems/{itemId} {
+      function isValidItem(data) {
+        return data.userId == request.auth.uid &&
+               data.type in ['text', 'image'] &&
+               (data.type == 'text' ? (data.content is string && data.content.size() <= 100000) : true) &&
+               (data.type == 'image' ? (data.imageUrl is string && data.imageUrl.size() <= 2000) : true) &&
+               data.size is number &&
+               data.createdAt is timestamp &&
+               data.keys().hasAll(['userId', 'type', 'createdAt', 'size']) &&
+               data.keys().size() <= 12;
+      }
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidItem(incoming()) && (incoming().createdAt == request.time || incoming().createdAt is timestamp);
+      allow update: if isOwner(existing().userId) && isValidItem(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['labelId', 'pinned', 'updatedAt', 'content']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Labels
+    match /labels/{labelId} {
+      function isValidLabel(data) {
+        return data.userId == request.auth.uid &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 50 &&
+               data.keys().hasAll(['userId', 'name', 'createdAt']) &&
+               data.keys().size() <= 5;
+      }
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidLabel(incoming());
+      allow update: if isOwner(existing().userId) && isValidLabel(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name']);
+      allow delete: if isOwner(existing().userId);
+    }
+  }
+}
