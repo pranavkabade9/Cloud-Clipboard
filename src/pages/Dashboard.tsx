@@ -75,7 +75,11 @@ const Dashboard = () => {
   };
 
   const handleImageFile = useCallback(async (file: File) => {
-    const loadingToast = toast.loading("Syncing media...");
+    const loadingToast = toast.loading("Uploading media...");
+    const tempId = crypto.randomUUID();
+    const { addUploadingItem, removeUploadingItem } = useStore.getState();
+    addUploadingItem({ id: tempId, type: 'image' });
+
     try {
       const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1600, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
@@ -94,11 +98,13 @@ const Dashboard = () => {
       }
       await saveToClipboard({ type: 'image', imageUrl, size: compressedFile.size });
       toast.dismiss(loadingToast);
-      toast.success("Media synced");
+      toast.success("Saved to vault");
     } catch (err) {
       toast.dismiss(loadingToast);
-      toast.error("Sync failed");
+      toast.error("Upload failed");
       console.error(err);
+    } finally {
+      removeUploadingItem(tempId);
     }
   }, [user, isGuest, userProfile, storageLimit]);
 
@@ -236,7 +242,7 @@ const Dashboard = () => {
                     <CloudIcon className="h-12 w-12 text-blue-500 animate-bounce" />
                  </div>
                  <div className="text-center">
-                    <h2 className="text-4xl font-black text-white px-8">Drop to sync</h2>
+                    <h2 className="text-4xl font-black text-white px-8">Drop to save</h2>
                     <p className="text-blue-400 font-bold uppercase tracking-[0.3em] text-[10px] mt-4">Safe & Secure Upload</p>
                  </div>
               </div>

@@ -115,13 +115,14 @@ const ClipboardInput = () => {
 
       let imageUrl = '';
       if (user) {
-        const storageRef = ref(storage, `clips/${user.uid}/${Date.now()}-${file.name}`);
+        const storageRef = ref(storage, `clips/${user.uid}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`);
         const snapshot = await uploadBytes(storageRef, finalFile);
         imageUrl = await getDownloadURL(snapshot.ref);
       } else {
         const reader = new FileReader();
-        imageUrl = await new Promise((resolve) => {
+        imageUrl = await new Promise((resolve, reject) => {
           reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = (e) => reject(new Error("File read failed"));
           reader.readAsDataURL(finalFile);
         });
       }
@@ -133,14 +134,13 @@ const ClipboardInput = () => {
       });
 
       toast.dismiss(loadingToast);
-      removeUploadingItem(tempId);
       toast.success("Snippet saved successfully");
     } catch (error) {
       console.error(error);
       toast.dismiss(loadingToast);
-      removeUploadingItem(tempId);
       toast.error("Failed to save image");
     } finally {
+      removeUploadingItem(tempId);
       setIsUploading(false);
     }
   };
@@ -252,7 +252,7 @@ const ClipboardInput = () => {
                     onClick={handleTextSubmit}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-30 px-10 py-3.5 rounded-[22px] text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 shadow-2xl shadow-blue-500/20"
                   >
-                    {isUploading ? "Syncing..." : "Sync to Vault"}
+                    {isUploading ? "Uploading..." : "Save Clip"}
                     {!isUploading && <Send className="h-4 w-4" />}
                   </button>
                 </div>

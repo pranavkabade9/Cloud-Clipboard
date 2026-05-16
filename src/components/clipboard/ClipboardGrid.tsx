@@ -117,6 +117,27 @@ const ClipboardGrid = () => {
               <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">
                 {activeFilter === 'bin' ? 'Bin Items' : 'Recently Saved'}
               </h2>
+              {activeFilter === 'bin' && recentItems.length > 0 && (
+                <button
+                  onClick={async () => {
+                    if (!confirm("Empty Bin? Items will be PERMANENTLY deleted.")) return;
+                    const { user, isGuest, clipboardItems } = useStore.getState();
+                    const { deleteDoc, doc } = await import('firebase/firestore');
+                    const { db } = await import('../../services/firebase');
+                    const deletedItems = clipboardItems.filter(i => i.deleted);
+                    if (user) {
+                      await Promise.all(deletedItems.map(i => deleteDoc(doc(db, 'clipboardItems', i.id))));
+                    } else if (isGuest) {
+                      const remaining = clipboardItems.filter(i => !i.deleted);
+                      localStorage.setItem('guest_clipboard', JSON.stringify(remaining));
+                      useStore.getState().setClipboardItems(remaining);
+                    }
+                  }}
+                  className="ml-auto px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                >
+                  Empty Bin
+                </button>
+              )}
               <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800/50" />
            </div>
 
@@ -130,7 +151,7 @@ const ClipboardGrid = () => {
                     className="p-8 dark:bg-neutral-900 bg-white border dark:border-white/5 border-neutral-200 rounded-[28px] flex flex-col items-center justify-center gap-4 opacity-50"
                   >
                     <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Syncing...</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Uploading...</span>
                   </motion.div>
                 ))}
                 {recentItems.map((item) => (

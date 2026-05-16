@@ -45,6 +45,8 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(item.content || '');
   const [relativeTime, setRelativeTime] = useState(getRelativeTime(new Date(item.createdAt?.seconds * 1000 || item.createdAt)));
 
   useEffect(() => {
@@ -65,10 +67,10 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
         await navigator.clipboard.write([clipboardItem]);
       }
       setIsCopied(true);
-      toast.success("Ready for paste");
+      toast.success("Copied to clipboard");
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      toast.error("Format mismatch");
+      toast.error("Copy failed");
     }
   }, [item.content, item.imageUrl, item.type]);
 
@@ -157,16 +159,24 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     
     const originalState = { deleted: !!item.deleted, archived: !!item.archived };
     
-    const performSoftDelete = async (shouldDelete: boolean) => {
-      if (user) {
+  const performSoftDelete = async (shouldDelete: boolean) => {
+    // Optimistic update for both guest and user
+    const currentItems = useStore.getState().clipboardItems;
+    const updated = currentItems.map((i: any) => i.id === item.id ? { ...i, deleted: shouldDelete } : i);
+    useStore.getState().setClipboardItems(updated);
+
+    if (user) {
+      try {
         await updateDoc(doc(db, 'clipboardItems', item.id), { deleted: shouldDelete });
-      } else if (isGuest) {
-        const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-        const updated = localItems.map((i: any) => i.id === item.id ? { ...i, deleted: shouldDelete } : i);
-        localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-        useStore.getState().setClipboardItems(updated);
+      } catch (error) {
+        // Rollback on error
+        useStore.getState().setClipboardItems(currentItems);
+        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
       }
-    };
+    } else if (isGuest) {
+      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+    }
+  };
 
     try {
       await performSoftDelete(true);
@@ -193,6 +203,29 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
       document.body.removeChild(link);
     }
   }, [item.imageUrl]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editContent.trim()) return;
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'clipboardItems', item.id), { 
+          content: editContent.trim(),
+          updatedAt: serverTimestamp() 
+        });
+        toast.success("Clip updated");
+        setIsEditing(false);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
+      }
+    } else if (isGuest) {
+      const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, content: editContent.trim() } : i);
+      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+      useStore.getState().setClipboardItems(updated);
+      toast.success("Updated locally");
+      setIsEditing(false);
+    }
+  }, [item.id, editContent, user, isGuest]);
 
   const handleAnnotateSave = useCallback(async (blob: Blob) => {
     const loadingToast = toast.loading("Saving edit...");
@@ -358,7 +391,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
              )}
            >
              {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-             {isCopied ? "Synced" : "Sync Local"}
+             {isCopied ? "Copied" : "Copy"}
            </button>
            {item.type === 'image' && (
              <button onClick={() => setIsAnnotating(true)} className="p-3.5 rounded-xl bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-white dark:hover:bg-white/20 transition-all">
@@ -388,19 +421,50 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               className="max-w-6xl w-full h-full flex flex-col lg:flex-row gap-8 lg:gap-12 overflow-y-auto lg:overflow-visible custom-scrollbar"
               onClick={e => e.stopPropagation()}
              >
-                <div className="flex-1 bg-neutral-900 rounded-[32px] lg:rounded-[48px] border border-white/5 overflow-hidden shadow-2xl relative min-h-[300px]">
+                <div className={cn(
+                   "flex-1 bg-neutral-900 rounded-[32px] lg:rounded-[48px] border border-white/5 overflow-hidden shadow-2xl relative min-h-[400px] flex flex-col",
+                   isEditing && "ring-2 ring-blue-500"
+                 )}>
                   {item.type === 'image' ? (
                     <img src={item.imageUrl} className="w-full h-full object-contain" alt="Deep view" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="w-full h-full p-8 lg:p-16 overflow-y-auto custom-scrollbar text-white text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap">
-                      {item.content}
+                    <div className="w-full h-full p-8 lg:p-16 overflow-y-auto custom-scrollbar flex flex-col h-full">
+                      {isEditing ? (
+                        <textarea
+                          autoFocus
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="w-full flex-1 bg-transparent border-none focus:ring-0 text-white text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap resize-none no-scrollbar"
+                          placeholder="Edit your clip..."
+                        />
+                      ) : (
+                        <div className="text-white text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap">
+                          {item.content}
+                        </div>
+                      )}
                     </div>
                   )}
-                   {item.type === 'image' && !item.deleted && (
-                    <button onClick={() => setIsAnnotating(true)} className="absolute bottom-6 right-6 lg:bottom-10 lg:right-10 flex items-center gap-3 px-6 lg:px-10 py-3 lg:py-5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl lg:rounded-[24px] font-black text-xs lg:text-sm transition-all active:scale-95 shadow-2xl">
-                       <Pencil className="h-4 lg:h-5 lg:w-5" />
-                       Draw / Annotate
-                    </button>
+                   {!item.deleted && (
+                    <div className="absolute bottom-6 right-6 lg:bottom-10 lg:right-10 flex items-center gap-4">
+                      {item.type === 'text' && (
+                        <button 
+                          onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)} 
+                          className={cn(
+                            "flex items-center gap-3 px-6 lg:px-10 py-3 lg:py-5 rounded-2xl lg:rounded-[24px] font-black text-xs lg:text-sm transition-all active:scale-95 shadow-2xl",
+                            isEditing ? "bg-green-500 hover:bg-green-600 text-white" : "bg-white/10 hover:bg-white/20 text-white backdrop-blur-xl border border-white/10"
+                          )}
+                        >
+                           {isEditing ? <Check className="h-4 lg:h-5 lg:w-5" /> : <Pencil className="h-4 lg:h-5 lg:w-5" />}
+                           {isEditing ? "Save Changes" : "Edit Note"}
+                        </button>
+                      )}
+                      {item.type === 'image' && (
+                        <button onClick={() => setIsAnnotating(true)} className="flex items-center gap-3 px-6 lg:px-10 py-3 lg:py-5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl lg:rounded-[24px] font-black text-xs lg:text-sm transition-all active:scale-95 shadow-2xl">
+                           <Pencil className="h-4 lg:h-5 lg:w-5" />
+                           Draw / Annotate
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -432,7 +496,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                           </button>
                           <button onClick={handleCopy} className="w-full flex items-center justify-center gap-3 py-5 rounded-[24px] bg-blue-500 text-white font-black text-xs transition-all hover:scale-[1.02] shadow-2xl border border-blue-400/20">
                             <Copy className="h-5 w-5" />
-                            Sync to Desktop
+                            Copy Clip
                           </button>
                         </>
                       ) : (
