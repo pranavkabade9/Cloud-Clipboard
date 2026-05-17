@@ -41,11 +41,9 @@ const Navbar = () => {
     clipboardItems,
     setActiveFilter,
     isSettingsOpen,
-    setIsSettingsOpen,
-    refreshData
+    setIsSettingsOpen
   } = useStore();
   
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   
@@ -76,10 +74,7 @@ const Navbar = () => {
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className={cn(
-            "p-3 rounded-2xl transition-all active:scale-90 border",
-            theme === 'dark' 
-              ? "bg-white/5 border-white/10 hover:bg-white/10 text-white" 
-              : "bg-neutral-100 border-neutral-200 hover:bg-neutral-200 text-neutral-900",
+            "p-3 rounded-2xl transition-all active:scale-90 border border-border-primary bg-bg-primary text-text-primary hover:border-blue-500/50",
             "shadow-sm backdrop-blur-md"
           )}
         >
@@ -116,7 +111,7 @@ const Navbar = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
             placeholder={placeholders[placeholderIndex]}
-            className="w-full h-11 pl-11 pr-12 rounded-2xl border border-border-primary dark:bg-white/5 bg-neutral-100/50 text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:bg-white/10 transition-all font-semibold text-sm"
+            className="w-full h-11 pl-11 pr-12 rounded-2xl border border-border-primary bg-input-bg text-text-primary placeholder-text-muted/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold text-sm"
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1 opacity-40">
              <Command className="h-3 w-3" />
@@ -147,7 +142,7 @@ const Navbar = () => {
                              setSearchQuery(item.content || '');
                              setIsSearchFocused(false);
                            }}
-                           className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:bg-neutral-100 dark:hover:bg-white/5 transition-all text-left"
+                           className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:border-border-hover border border-transparent transition-all text-left"
                          >
                             <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
                                {item.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <StickyNote className="h-4 w-4" />}
@@ -172,7 +167,7 @@ const Navbar = () => {
                            setSearchQuery(item.content || '');
                            setIsSearchFocused(false);
                          }}
-                         className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:bg-neutral-100 dark:hover:bg-white/5 transition-all text-left"
+                         className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:border-border-hover border border-transparent transition-all text-left"
                        >
                           <div className={cn(
                             "h-8 w-8 rounded-lg flex items-center justify-center",
@@ -208,57 +203,56 @@ const Navbar = () => {
         </AnimatePresence>
       </div>
 
-      <div className="flex items-center gap-4 lg:w-64 justify-end">
-        {isGuest && (
-          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20">
-             <Globe className="h-3 w-3 text-blue-500" />
-             <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest leading-none">Local</span>
-          </div>
+      <div className="flex items-center gap-2 lg:w-80 justify-end">
+        {!isMobile && (
+          <button 
+            className="p-2.5 rounded-[18px] border border-border-primary bg-bg-primary text-text-secondary hover:text-blue-500 transition-all shadow-sm active:scale-95"
+            title="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-500 border-2 border-bg-primary" />
+          </button>
         )}
 
-        <div className="flex items-center gap-4">
+        <div className="relative">
           <button 
-            onClick={() => {
-              setIsRefreshing(true);
-              refreshData();
-              setTimeout(() => setIsRefreshing(false), 800);
-            }}
-            className="p-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-text-secondary transition-all active:scale-95"
-            title="Refresh Vault (R)"
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-[22px] border border-border-primary bg-bg-primary shadow-sm hover:border-blue-500/30 transition-all outline-none",
+              isMobile ? "pl-2 pr-1" : "pl-4 pr-1.5"
+            )}
           >
-            <RotateCw className={cn("h-5 w-5", isRefreshing && "animate-spin")} />
-          </button>
-
-          <button 
-            onClick={toggleTheme}
-            className="p-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-text-secondary transition-all active:scale-95"
-          >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
-          
-          <div className="relative">
-            <button 
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className="flex items-center gap-3 p-1 rounded-2xl border border-border-primary bg-bg-primary shadow-sm hover:border-blue-500/30 transition-all outline-none"
-            >
-              <div className="hidden sm:flex flex-col items-end px-2">
-                 <span className="text-xs font-bold text-text-primary leading-none mb-1">
-                   {user?.displayName || "Guest Explorer"}
-                 </span>
-                 <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest leading-none">
-                   {isGuest ? "Free Mode" : "Sync Pro"}
-                 </span>
+            {isMobile && (
+              <Bell className="h-4 w-4 text-text-secondary mr-1" />
+            )}
+            
+            <div className="flex items-center gap-3 pr-1">
+               <span className={cn(
+                 "text-sm font-bold text-text-primary leading-none truncate max-w-[120px] sm:max-w-[200px]",
+                 isMobile && "text-[12px]"
+               )}>
+                 {user?.displayName || "Guest User"}
+               </span>
+            </div>
+            {user?.photoURL ? (
+              <img 
+                src={user.photoURL} 
+                className={cn(
+                  "rounded-[14px] object-cover border border-border-primary/50",
+                  isMobile ? "h-8 w-8" : "h-10 w-10"
+                )} 
+                alt="Profile" 
+              />
+            ) : (
+              <div className={cn(
+                "flex items-center justify-center bg-bg-secondary text-text-secondary rounded-[14px] border border-border-primary/50",
+                isMobile ? "h-8 w-8" : "h-10 w-10"
+              )}>
+                <User className="h-4 w-4" />
               </div>
-              {user?.photoURL ? (
-                <img src={user.photoURL} className="h-9 w-9 rounded-[14px] object-cover" alt="Profile" />
-              ) : (
-                <div className="h-9 w-9 flex items-center justify-center bg-bg-secondary text-text-secondary rounded-[14px]">
-                  <User className="h-4 w-4" />
-                </div>
-              )}
-            </button>
-            <SettingsDropdown isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-          </div>
+            )}
+          </button>
+          <SettingsDropdown isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
         </div>
       </div>
 

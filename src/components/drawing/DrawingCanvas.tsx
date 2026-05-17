@@ -193,23 +193,10 @@ const DrawingCanvas = ({ onSave, onClose, initialImage }: DrawingCanvasProps) =>
     handleResize();
     window.addEventListener('resize', handleResize);
     
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [undo, redo, drawAll]);
+  }, [drawAll]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -340,7 +327,7 @@ const DrawingCanvas = ({ onSave, onClose, initialImage }: DrawingCanvasProps) =>
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex flex-col bg-neutral-950/95 backdrop-blur-3xl overflow-hidden font-['Poppins']"
     >
-      {/* Premium Header */}
+      {/* Canvas Header */}
       <header className="flex items-center justify-between px-8 py-4 border-b dark:border-white/5 border-neutral-200 bg-black/20">
         <div className="flex items-center gap-6">
           <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">

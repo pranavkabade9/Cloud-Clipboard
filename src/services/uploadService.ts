@@ -35,9 +35,18 @@ export const handleImageUpload = async ({
   onError,
   skipCompression = false
 }: UploadParams) => {
-  const { addUploadingItem, removeUploadingItem, setClipboardItems } = useStore.getState();
+  const { addUploadingItem, removeUploadingItem, setClipboardItems, storageLimit, userProfile } = useStore.getState();
   const tempId = crypto.randomUUID();
   const previewUrl = URL.createObjectURL(file);
+
+  // 0. Storage Validation
+  const currentUsage = userProfile?.storageUsed || 0;
+  if (currentUsage + file.size > storageLimit) {
+    toast.error("Storage limit exceeded!", {
+      description: `Need more than ${Math.round(storageLimit / 1024 / 1024)}MB? Please contact support.`
+    });
+    return;
+  }
   
   // 1. Instant local preview
   addUploadingItem({ 
@@ -55,7 +64,7 @@ export const handleImageUpload = async ({
     // 2. Async Lightweight Compression
     let compressedFile = file;
     
-    if (!skipCompression) {
+    if (!skipCompression && file.type.startsWith('image/')) {
       const options = {
         maxSizeMB: 0.8,
         maxWidthOrHeight: 1600,
@@ -63,8 +72,11 @@ export const handleImageUpload = async ({
         initialQuality: 0.8,
         fileType: 'image/webp'
       };
-      // We run compression but don't let it block the main thread more than necessary
-      compressedFile = await imageCompression(file, options);
+      try {
+        compressedFile = await imageCompression(file, options);
+      } catch (e) {
+        console.warn("Compression failed, using original file", e);
+      }
     }
     
     let finalImageUrl = '';
@@ -79,15 +91,27 @@ export const handleImageUpload = async ({
       const uploadTask = uploadBytesResumable(storageRef, compressedFile);
 
       finalImageUrl = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+           uploadTask.cancel();
+           reject(new Error("Upload timeout after 60 seconds"));
+        }, 60000);
+
         uploadTask.on('state_changed', 
           (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            // We could update progress UI here if needed
+            // Progress could be updated here
           }, 
-          (error) => reject(error), 
+          (error) => {
+            clearTimeout(timeout);
+            reject(error);
+          }, 
           async () => {
-            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadUrl);
+            clearTimeout(timeout);
+            try {
+              const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadUrl);
+            } catch (e) {
+              reject(e);
+            }
           }
         );
       });
@@ -130,12 +154,13 @@ export const handleImageUpload = async ({
 
     toast.success("Saved perfectly", { id: loadingToast });
     onSuccess?.();
-  } catch (error) {
+  } catch (error: any) {
     console.error("Upload pipeline failed:", error);
-    toast.error("Failed to save image", { id: loadingToast });
+    const errorMsg = error?.message?.includes('Quota exceeded') ? "Storage quota exceeded" : "Failed to save image";
+    toast.error(errorMsg, { id: loadingToast });
     onError?.(error);
   } finally {
     removeUploadingItem(tempId);
-    URL.revokeObjectURL(previewUrl);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
   }
 };

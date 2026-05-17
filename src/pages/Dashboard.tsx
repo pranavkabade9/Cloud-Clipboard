@@ -14,7 +14,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { toast } from 'sonner';
 import { cn } from '../utils/utils';
-import { Upload, Cloud as CloudIcon, Plus, StickyNote } from 'lucide-react';
+import { Upload, Cloud as CloudIcon, Plus, StickyNote, Clipboard } from 'lucide-react';
 
 import { handleImageUpload } from '../services/uploadService';
 
@@ -33,86 +33,9 @@ const Dashboard = () => {
     setIsSidebarOpen,
     activeFilter,
     isNoteEditorOpen,
-    setIsNoteEditorOpen,
-    undo,
-    refreshTrigger
+    setIsNoteEditorOpen
   } = useStore();
   const [isDragging, setIsDragging] = useState(false);
-
-  const handleUndoAction = useCallback(async () => {
-    const lastAction = undo();
-    if (!lastAction) return;
-
-    const { type, payload } = lastAction;
-    
-    try {
-      if (type === 'CLIP_DELETE') {
-        const { id, originalState } = payload;
-        if (user) {
-          await updateDoc(doc(db, 'clipboardItems', id), originalState);
-        } else if (isGuest) {
-          const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-          const updated = localItems.map((i: any) => i.id === id ? { ...i, ...originalState } : i);
-          localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-          useStore.getState().setClipboardItems(updated);
-        }
-        toast.info("Delete undone");
-      } else if (type === 'CLIP_CREATE') {
-        // Undo create = delete
-        const { id, size } = payload;
-        if (user) {
-          await deleteDoc(doc(db, 'clipboardItems', id));
-          await updateDoc(doc(db, 'users', user.uid), {
-            storageUsed: increment(-size),
-            updatedAt: serverTimestamp()
-          });
-        } else if (isGuest) {
-          const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-          const filtered = localItems.filter((i: any) => i.id !== id);
-          localStorage.setItem('guest_clipboard', JSON.stringify(filtered));
-          useStore.getState().setClipboardItems(filtered);
-        }
-        toast.info("Creation undone");
-      } else if (type === 'CLIP_EDIT') {
-        const { id, previousContent } = payload;
-        if (user) {
-          await updateDoc(doc(db, 'clipboardItems', id), { content: previousContent });
-        } else if (isGuest) {
-          const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-          const updated = localItems.map((i: any) => i.id === id ? { ...i, content: previousContent } : i);
-          localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-          useStore.getState().setClipboardItems(updated);
-        }
-        toast.info("Edit undone");
-      }
-    } catch (error) {
-      console.error("Undo failed:", error);
-      toast.error("Could not undo action");
-    }
-  }, [undo, user, isGuest]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl + Z Undo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        const active = document.activeElement;
-        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
-        e.preventDefault();
-        handleUndoAction();
-      }
-      
-      // Refresh with 'r' key (if not in input)
-      if (e.key.toLowerCase() === 'r') {
-        const active = document.activeElement;
-        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
-        e.preventDefault();
-        useStore.getState().refreshData();
-        toast.info("Vault refreshed");
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndoAction]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -130,7 +53,9 @@ const Dashboard = () => {
     
     if (user && userProfile) {
       if (userProfile.storageUsed + itemSize > storageLimit) {
-        toast.error("Storage limit reached!");
+        toast.error("Storage limit reached!", {
+          description: "Free storage limit reached. Clear space or contact support."
+        });
         return;
       }
     }
@@ -144,12 +69,7 @@ const Dashboard = () => {
           size: itemSize,
           pinned: data.pinned || false,
         };
-        await addDoc(collection(db, 'clipboardItems'), itemData).then(docRef => {
-          useStore.getState().pushToHistory({
-            type: 'CLIP_CREATE',
-            payload: { id: docRef.id, size: itemSize }
-          });
-        });
+        await addDoc(collection(db, 'clipboardItems'), itemData);
         await updateDoc(doc(db, 'users', user.uid), {
           storageUsed: increment(itemSize),
           updatedAt: serverTimestamp(),
@@ -170,10 +90,6 @@ const Dashboard = () => {
       const updatedItems = [newItem, ...localItems];
       localStorage.setItem('guest_clipboard', JSON.stringify(updatedItems));
       setClipboardItems(updatedItems);
-      useStore.getState().pushToHistory({
-        type: 'CLIP_CREATE',
-        payload: { id: newItem.id, size: itemSize }
-      });
       toast.success("Saved locally");
     }
   };
@@ -278,7 +194,7 @@ const Dashboard = () => {
       const localLabels = JSON.parse(localStorage.getItem('guest_labels') || '[]');
       setLabels(localLabels);
     }
-  }, [user, isGuest, refreshTrigger]);
+  }, [user, isGuest]);
 
   return (
     <div 
@@ -364,7 +280,29 @@ const Dashboard = () => {
             </AnimatePresence>
 
             {activeFilter === 'all' && (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-6">
+                {isMobile && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                        // Trigger the paste action - we can dispatch a custom event or use the store
+                        // For simplicity I'll call a shared utility or just implement it here
+                        // Better to use a store action if we had one, but let's just trigger paste
+                        const event = new CustomEvent('clipboard-paste-mobile');
+                        window.dispatchEvent(event);
+                    }}
+                    className="group relative flex items-center justify-center gap-3 w-full max-w-[280px] px-8 py-5 rounded-full bg-bg-secondary border border-blue-500/20 shadow-[0_12px_44px_rgba(59,130,246,0.15)] overflow-hidden transition-all hover:shadow-[0_12px_44px_rgba(59,130,246,0.3)] backdrop-blur-md"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    
+                    <Clipboard className="h-5 w-5 text-blue-500 relative z-10" />
+                    <span className="text-sm font-black text-text-primary relative z-10 tracking-widest uppercase">Paste from Clipboard</span>
+                    
+                    {/* Subtle Glow */}
+                    <div className="absolute -right-4 -top-4 h-16 w-16 bg-blue-500/10 blur-[32px] rounded-full group-hover:bg-blue-500/20 transition-all" />
+                  </motion.button>
+                )}
                 <ClipboardInput onSave={saveToClipboard} />
               </div>
             )}

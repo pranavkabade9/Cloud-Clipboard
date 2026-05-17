@@ -25,7 +25,7 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
       "group relative flex items-center w-full gap-3 px-4 py-3 rounded-2xl transition-all duration-300",
       activeFilter === item.id 
         ? "dark:bg-blue-500/10 bg-blue-50 text-blue-600 dark:text-blue-400 shadow-sm" 
-        : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.03] hover:text-neutral-900 dark:hover:text-neutral-300"
+        : "text-text-secondary hover:bg-bg-primary hover:text-text-primary"
     )}
   >
     <item.icon className={cn(
@@ -67,7 +67,7 @@ interface SidebarProps {
 }
 
 const Sidebar = () => {
-  const { activeFilter, setActiveFilter, userProfile, storageLimit, isSidebarOpen, setIsSidebarOpen } = useStore();
+  const { activeFilter, setActiveFilter, userProfile, storageLimit, isSidebarOpen, setIsSidebarOpen, isMobile } = useStore();
 
   const primaryItems = [
     { id: 'all', icon: LayoutGrid, label: 'Everything' },
@@ -177,7 +177,7 @@ const Sidebar = () => {
                </div>
                <span className="text-[9px] font-bold">{Math.round(storagePercentage)}%</span>
             </div>
-            <div className="h-1.5 w-full bg-neutral-200 dark:bg-white/5 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-border-primary rounded-full overflow-hidden">
                <motion.div 
                  initial={{ width: 0 }}
                  animate={{ width: `${Math.min(100, storagePercentage)}%` }} 
@@ -192,22 +192,28 @@ const Sidebar = () => {
           </div>
         )}
 
-        <div className="flex items-center gap-3">
-           <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
-           >
-             <ChevronLeft className={cn("h-5 w-5 transition-transform duration-500 relative z-10", !isSidebarOpen && "rotate-180")} />
-             <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.03] transition-colors" />
-           </button>
-           
-           <button 
-            className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
-           >
-             <Settings className="h-5 w-5 relative z-10 transition-transform group-hover:rotate-45" />
-             <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.03] transition-colors" />
-           </button>
-        </div>
+        {isMobile && !isSidebarOpen && (
+           <div className="flex items-center gap-3">
+             <button 
+              onClick={() => setIsSidebarOpen(true)} 
+              className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
+             >
+               <ChevronLeft className="h-5 w-5 transition-transform duration-500 relative z-10 rotate-180" />
+               <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.03] transition-colors" />
+             </button>
+           </div>
+        )}
+        {!isMobile && !isSidebarOpen && (
+           <div className="flex items-center gap-3">
+             <button 
+              onClick={() => setIsSidebarOpen(true)} 
+              className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
+             >
+               <ChevronLeft className="h-5 w-5 transition-transform duration-500 relative z-10 rotate-180" />
+               <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.03] transition-colors" />
+             </button>
+           </div>
+        )}
       </div>
     </motion.aside>
   );

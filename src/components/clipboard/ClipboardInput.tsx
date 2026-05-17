@@ -147,7 +147,7 @@ const ClipboardInput = () => {
         layout
         className={cn(
           "w-full bg-bg-secondary border border-border-primary rounded-[28px] overflow-hidden transition-all duration-300 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)]",
-          isExpanded ? "ring-4 ring-blue-500/10 border-blue-500/30" : "hover:border-neutral-300 dark:hover:border-neutral-700",
+          isExpanded ? "ring-4 ring-blue-500/10 border-blue-500/30" : "hover:border-border-hover",
           isDragging && "ring-4 ring-blue-500/40 border-blue-500 bg-blue-500/5 backdrop-blur-sm"
         )}
       >
@@ -173,7 +173,7 @@ const ClipboardInput = () => {
                    setContent('');
                    setIsExpanded(false);
                  }}
-                 className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
+                 className="p-2 rounded-lg hover:bg-bg-primary text-text-muted transition-colors"
                >
                  <X className="h-4 w-4" />
                </button>
@@ -187,7 +187,7 @@ const ClipboardInput = () => {
                onChange={(e) => setContent(e.target.value)}
                onFocus={() => setIsExpanded(true)}
                placeholder="Capture a fragment..."
-               className="w-full bg-transparent border-none focus:ring-0 dark:text-neutral-100 text-neutral-900 placeholder-neutral-500 resize-none py-2 min-h-[48px] transition-all font-semibold text-base leading-relaxed"
+               className="w-full bg-transparent border-none focus:ring-0 text-text-primary placeholder-text-muted resize-none py-2 min-h-[48px] transition-all font-semibold text-base leading-relaxed"
                style={{ height: isExpanded ? '140px' : '48px' }}
              />
           </div>
@@ -200,7 +200,7 @@ const ClipboardInput = () => {
                 exit={{ opacity: 0, height: 0 }}
                 className="flex items-center justify-between px-6 pb-6 pt-2 overflow-hidden"
               >
-                <div className="flex items-center gap-2 text-neutral-400">
+                <div className="flex items-center gap-2 text-text-muted">
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 hidden sm:inline">⌘ + Enter</span>
                 </div>
 
@@ -244,7 +244,7 @@ const ClipboardInput = () => {
             className="absolute inset-0 z-50 flex items-center justify-center rounded-[32px] bg-blue-500/10 backdrop-blur-md pointer-events-none"
           >
             <div className="flex flex-col items-center gap-6 text-blue-500">
-               <div className="h-24 w-24 rounded-full bg-white dark:bg-neutral-900 flex items-center justify-center shadow-2xl border-4 border-blue-500/50">
+               <div className="h-24 w-24 rounded-full bg-bg-secondary flex items-center justify-center shadow-2xl border-4 border-blue-500/50">
                   <Upload className="h-10 w-10" />
                </div>
                <span className="text-2xl font-black uppercase tracking-tighter">Release to Save</span>
@@ -263,7 +263,7 @@ const ModeButton = ({ active, onClick, icon: Icon, label }: any) => (
       "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95",
       active 
         ? "bg-blue-500/10 text-blue-500 decoration-blue-500/30" 
-        : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        : "text-text-muted hover:bg-bg-primary hover:text-text-primary"
     )}
   >
     <Icon className="h-3.5 w-3.5" />

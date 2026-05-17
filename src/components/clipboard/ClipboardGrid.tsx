@@ -182,7 +182,7 @@ const ClipboardGrid = () => {
                     key={item.id}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="relative p-0 dark:bg-neutral-900 bg-white border dark:border-white/5 border-neutral-200 rounded-[28px] overflow-hidden flex flex-col items-center justify-center gap-4 opacity-70 min-h-[160px]"
+                    className="relative p-0 bg-bg-secondary border border-border-primary rounded-[28px] overflow-hidden flex flex-col items-center justify-center gap-4 opacity-70 min-h-[200px]"
                   >
                     {item.imageUrl ? (
                       <div className="absolute inset-0 z-0">
@@ -190,11 +190,11 @@ const ClipboardGrid = () => {
                          <div className="absolute inset-0 bg-black/40" />
                       </div>
                     ) : (
-                      <div className="absolute inset-0 bg-neutral-100 dark:bg-neutral-800" />
+                      <div className="absolute inset-0 bg-bg-primary" />
                     )}
                     <div className="relative z-10 flex flex-col items-center gap-3">
                       <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Uploading...</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Processing media...</span>
                     </div>
                   </motion.div>
                 ))}

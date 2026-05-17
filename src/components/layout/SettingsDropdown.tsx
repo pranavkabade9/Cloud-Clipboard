@@ -31,7 +31,6 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
     user, 
     userProfile, 
     theme, 
-    toggleTheme, 
     storageLimit, 
     animationsEnabled, 
     setAnimationsEnabled,
@@ -52,7 +51,6 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
         const batch = writeBatch(db);
         snapshot.docs.forEach((d) => batch.delete(d.ref));
         
-        // Reset storage used in user profile
         batch.update(doc(db, 'users', user.uid), {
           storageUsed: 0,
           updatedAt: serverTimestamp()
@@ -68,70 +66,17 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
       useStore.getState().setClipboardItems([]);
       toast.success("Guest clipboard cleared");
     }
-    onClose();
-  };
-
-  const handleExport = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clipboardItems));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `cloudclip_export_${new Date().toISOString()}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-    toast.success("Clipboard exported");
-    onClose();
-  };
-
-  const handleImport = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      const reader = new FileReader();
-      reader.onload = async (re) => {
-        try {
-          const imported = JSON.parse(re.target?.result as string);
-          if (!Array.isArray(imported)) throw new Error("Invalid format");
-          
-          if (user) {
-            const batch = writeBatch(db);
-            imported.forEach(item => {
-              const newRef = doc(collection(db, 'clipboardItems'));
-              const { id, ...rest } = item;
-              batch.set(newRef, { ...rest, userId: user.uid, createdAt: serverTimestamp() });
-            });
-            await batch.commit();
-            toast.success(`Imported ${imported.length} items to cloud`);
-          } else {
-            const current = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-            const updated = [...imported, ...current];
-            localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-            useStore.getState().setClipboardItems(updated);
-            toast.success(`Imported ${imported.length} items locally`);
-          }
-        } catch (err) {
-          toast.error("Failed to import: Invalid file format");
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-    onClose();
   };
 
   const menuSections = [
     {
-      title: "General",
+      title: "GENERAL",
       items: [
         {
-          icon: theme === 'dark' ? Sun : Moon,
+          icon: Moon,
           label: "Appearance",
-          desc: `${theme === 'dark' ? 'Light' : 'Dark'} mode`,
-          onClick: toggleTheme,
+          desc: theme === 'dark' ? "Dark mode" : "Light mode",
+          onClick: useStore.getState().toggleTheme,
         },
         {
           icon: Gamepad2,
@@ -142,27 +87,29 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
       ]
     },
     {
-      title: "Storage",
+      title: "STORAGE",
       items: [
         {
           custom: (
-            <div className="px-3 py-2">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-neutral-400">
-                  <Database className="h-3 w-3" />
-                  <span>Cloud Usage</span>
+            <div className="space-y-3 py-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-bg-primary border border-border-primary/50 flex items-center justify-center text-text-muted">
+                    <Database className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-text-primary">Cloud Usage</p>
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold text-neutral-500">
+                <span className="text-[10px] font-bold text-text-muted">
                   {formatBytes(storageUsed)} / {formatBytes(storageLimit)}
                 </span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-neutral-800 overflow-hidden">
-                <div 
-                  className={cn(
-                    "h-full transition-all duration-700",
-                    storagePercentage > 90 ? "bg-red-500" : storagePercentage > 70 ? "bg-orange-500" : "bg-blue-500"
-                  )}
-                  style={{ width: `${Math.min(storagePercentage, 100)}%` }}
+              <div className="h-2 w-full rounded-full bg-border-primary overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(storagePercentage, 100)}%` }}
+                  className="h-full bg-blue-500 transition-all duration-700"
                 />
               </div>
             </div>
@@ -171,13 +118,40 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
       ]
     },
     {
-      title: "Clipboard",
+      title: "CLIPBOARD",
       items: [
         {
           icon: Upload,
           label: "Import Data",
           desc: "Upload JSON backup",
-          onClick: handleImport,
+          onClick: () => {
+             const input = document.createElement('input');
+             input.type = 'file';
+             input.accept = 'application/json';
+             input.onchange = async (e) => {
+               const file = (e.target as HTMLInputElement).files?.[0];
+               if (!file) return;
+               const reader = new FileReader();
+               reader.onload = async (re) => {
+                 try {
+                   const imported = JSON.parse(re.target?.result as string);
+                   if (!Array.isArray(imported)) throw new Error();
+                   if (user) {
+                     const batch = writeBatch(db);
+                     imported.forEach(item => {
+                       const newRef = doc(collection(db, 'clipboardItems'));
+                       const { id, ...rest } = item;
+                       batch.set(newRef, { ...rest, userId: user.uid, createdAt: serverTimestamp() });
+                     });
+                     await batch.commit();
+                     toast.success(`Imported ${imported.length} items`);
+                   }
+                 } catch (err) { toast.error("Invalid format"); }
+               };
+               reader.readAsText(file);
+             };
+             input.click();
+          },
         },
         {
           icon: Trash2,
@@ -190,34 +164,36 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
           icon: Download,
           label: "Export Data",
           desc: "Download as JSON",
-          onClick: handleExport,
+          onClick: () => {
+             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clipboardItems));
+             const downloadAnchorNode = document.createElement('a');
+             downloadAnchorNode.setAttribute("href", dataStr);
+             downloadAnchorNode.setAttribute("download", `vault_export.json`);
+             downloadAnchorNode.click();
+             downloadAnchorNode.remove();
+          },
         }
       ]
     },
     {
-      title: "Account",
+      title: "ACCOUNT",
       items: [
         {
           icon: LogOut,
           label: "Sign Out",
-          desc: isGuest ? "End guest session" : "Logout of account",
+          desc: isGuest ? "Logout of local session" : "Logout of account",
           onClick: () => {
-            if (isGuest) {
-              useStore.getState().setIsGuest(false);
-            } else {
-              signOut();
-            }
+            if (isGuest) useStore.getState().setIsGuest(false);
+            else signOut();
             onClose();
           },
         }
       ]
     },
     {
-      title: "Support",
+      title: "SUPPORT",
       items: [
-        { icon: HelpCircle, label: "Help Center", onClick: () => toast.info("Coming soon!") },
-        { icon: MessageSquare, label: "Feedback", onClick: () => toast.info("Coming soon!") },
-        { icon: Info, label: "About", onClick: () => toast.info("CloudClip v2.0.0") },
+        { icon: HelpCircle, label: "Help Center", desc: "Coming soon!", onClick: () => {} },
       ]
     }
   ];
@@ -225,72 +201,55 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+        <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-neutral-950/60 backdrop-blur-md"
+            className="fixed inset-0 z-[100]"
           />
           
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-xl max-h-[85vh] overflow-hidden rounded-[48px] border border-white/10 dark:bg-neutral-900/90 bg-white/90 shadow-[0_32px_64px_rgba(0,0,0,0.5)] backdrop-blur-3xl flex flex-col font-['Poppins']"
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className="absolute top-full right-0 mt-4 w-[340px] max-h-[80vh] overflow-y-auto rounded-[32px] border border-border-primary bg-bg-secondary shadow-2xl backdrop-blur-3xl z-[110] p-6 custom-scrollbar font-['Poppins']"
           >
-            {/* Header */}
-            <div className="p-8 pb-4 flex items-center justify-between">
-               <div>
-                  <h2 className="text-3xl font-black text-text-primary tracking-tight">Console</h2>
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 mt-1">Workspace Preferences</p>
-               </div>
-               <button 
-                onClick={onClose}
-                className="h-12 w-12 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center text-text-secondary hover:text-blue-500 transition-all hover:scale-110 active:scale-95"
-               >
-                 <X className="h-5 w-5" />
-               </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-8 py-2 custom-scrollbar space-y-8">
+            <div className="space-y-8">
               {menuSections.map((section, idx) => (
                 <div key={idx} className="space-y-4">
-                  <div className="flex items-center gap-3 px-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50">
-                      {section.title}
-                    </span>
-                    <div className="flex-1 h-px bg-border-primary" />
-                  </div>
+                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] px-2 outline-none">
+                    {section.title}
+                  </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     {section.items.map((item: any, i) => (
                       item.custom ? (
-                        <div key={i} className="md:col-span-2">{item.custom}</div>
+                        <div key={i} className="px-2">{item.custom}</div>
                       ) : (
                         <button
                           key={i}
                           onClick={item.onClick}
-                          className={cn(
-                            "group flex items-center gap-4 p-4 rounded-3xl transition-all border border-transparent",
-                            item.danger 
-                              ? "hover:bg-red-500/10 hover:border-red-500/20" 
-                              : "hover:bg-neutral-100 dark:hover:bg-white/5 hover:border-border-primary"
-                          )}
+                          className="w-full flex items-center gap-4 p-2 rounded-2xl transition-all hover:bg-bg-primary group text-left outline-none"
                         >
                           <div className={cn(
-                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-all group-hover:scale-110",
-                            item.danger 
-                              ? "bg-red-500/10 text-red-500" 
-                              : "bg-bg-primary text-text-secondary group-hover:text-blue-500 dark:border-white/5 border"
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-primary border border-border-primary/50 transition-all",
+                            item.danger ? "text-red-500 bg-red-500/5 group-hover:bg-red-500/10" : "text-text-secondary group-hover:text-blue-500 group-hover:bg-blue-500/10 group-hover:border-blue-500/20"
                           )}>
-                            {item.icon && <item.icon className="h-6 w-6" />}
+                            {item.icon && <item.icon className="h-5 w-5" />}
                           </div>
-                          <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-black text-text-primary uppercase tracking-tight">{item.label}</p>
+                          <div>
+                            <p className={cn(
+                                "text-sm font-bold tracking-tight",
+                                item.danger ? "text-red-500" : "text-text-primary"
+                            )}>
+                                {item.label}
+                            </p>
                             {item.desc && (
-                              <p className="text-[10px] font-bold text-text-secondary/60 line-clamp-1">{item.desc}</p>
+                              <p className="text-[10px] font-bold text-text-muted leading-none mt-0.5">
+                                {item.desc}
+                              </p>
                             )}
                           </div>
                         </button>
@@ -300,24 +259,8 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
                 </div>
               ))}
             </div>
-
-            {/* Footer */}
-            <div className="p-8 pt-4">
-               <div className="p-4 rounded-3xl bg-blue-500/5 border border-blue-500/10 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                     <div className="h-10 w-10 rounded-xl bg-blue-500 flex items-center justify-center text-white">
-                        <Database className="h-5 w-5" />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">System Version</p>
-                        <p className="text-xs font-bold text-text-primary">Vault Protocol v2.4.0</p>
-                     </div>
-                  </div>
-                  <span className="text-[10px] font-black text-text-secondary opacity-30 tracking-tighter">SECURED BY AES-256</span>
-               </div>
-            </div>
           </motion.div>
-        </div>
+        </>
       )}
     </AnimatePresence>
   );

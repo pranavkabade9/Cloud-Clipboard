@@ -242,10 +242,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   };
 
     try {
-      useStore.getState().pushToHistory({
-        type: 'CLIP_DELETE',
-        payload: { id: item.id, originalState: { deleted: false } }
-      });
       await performSoftDelete(true);
       toast.success("Moved to Bin", {
         action: {
@@ -276,10 +272,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     const previousContent = item.content;
     if (user) {
       try {
-        useStore.getState().pushToHistory({
-          type: 'CLIP_EDIT',
-          payload: { id: item.id, previousContent }
-        });
         await updateDoc(doc(db, 'clipboardItems', item.id), { 
           content: editContent.trim(),
           updatedAt: serverTimestamp() 
@@ -290,10 +282,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
         handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
       }
     } else if (isGuest) {
-      useStore.getState().pushToHistory({
-        type: 'CLIP_EDIT',
-        payload: { id: item.id, previousContent }
-      });
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
       const updated = localItems.map((i: any) => i.id === item.id ? { ...i, content: editContent.trim() } : i);
       localStorage.setItem('guest_clipboard', JSON.stringify(updated));
@@ -318,22 +306,43 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   return (
     <motion.div
       layout
+      onClick={handleCopy}
+      whileTap={{ scale: 0.98 }}
       className={cn(
-        "group relative dark:bg-neutral-900 bg-white border dark:border-white/5 border-neutral-200 rounded-[28px] overflow-hidden transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:hover:border-blue-500/30",
+        "group relative bg-bg-secondary border border-border-primary rounded-[28px] overflow-hidden transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-blue-500/30 shadow-sm cursor-pointer",
         item.pinned && "ring-1 ring-orange-500/30 border-orange-500/30",
-        isDeleting && "scale-95 opacity-50 grayscale pointer-events-none"
+        isDeleting && "scale-95 opacity-50 grayscale pointer-events-none",
+        isCopied && "ring-2 ring-green-500/50 border-green-500/50"
       )}
     >
+      <AnimatePresence>
+        {isCopied && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-green-500/10 backdrop-blur-[2px] pointer-events-none"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/40">
+                <Check className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600 dark:text-green-400 bg-white/80 dark:bg-black/80 px-3 py-1 rounded-full backdrop-blur-md">Copied to Vault</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="p-4 flex flex-col h-full">
         <div className="flex items-center justify-between mb-3">
            <div className="flex items-center gap-2">
               <div className={cn(
-                "p-1.5 rounded-lg text-neutral-500 transition-colors",
-                item.type === 'image' ? "bg-purple-500/5 text-purple-400" : "bg-blue-500/5 text-blue-400"
+                "p-1.5 rounded-lg transition-colors",
+                item.type === 'image' ? "bg-purple-500/5 text-purple-500" : "bg-blue-500/5 text-blue-500"
               )}>
                 {item.type === 'text' ? <Type className="h-3.5 w-3.5" /> : <ImageIcon className="h-3.5 w-3.5" />}
               </div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">{item.type}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">{item.type}</span>
            </div>
            
            <div className="lg:opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
@@ -342,11 +351,21 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
+                      setIsExpanded(true);
+                    }} 
+                    className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
+                    title="Expand View"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setIsReminderModalOpen(true);
                     }} 
                     className={cn(
                       "p-2 rounded-lg transition-all",
-                      item.reminder ? "text-blue-500 bg-blue-500/10" : "text-neutral-400 hover:text-white hover:bg-neutral-800"
+                      item.reminder ? "text-blue-500 bg-blue-500/10" : "text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary"
                     )}
                     title="Set Reminder"
                   >
@@ -354,7 +373,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                   </button>
                   <button 
                     onClick={handleArchive} 
-                    className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all"
+                    className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
                     title="Archive"
                   >
                     <Archive className="h-3.5 w-3.5" />
@@ -362,23 +381,23 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                   <button 
                     onClick={handlePin} 
                     className={cn(
-                      "p-2 rounded-lg transition-all", 
-                      item.pinned ? "text-orange-500 bg-orange-500/10" : "text-neutral-400 hover:text-white hover:bg-neutral-800"
+                      "p-2 rounded-lg transition-all border border-transparent", 
+                      item.pinned ? "text-orange-500 bg-orange-500/10 border-orange-500/20" : "text-text-muted hover:text-text-primary hover:bg-bg-primary hover:border-border-primary"
                     )}
                     title="Pin"
                   >
                     <Pin className={cn("h-3.5 w-3.5", item.pinned && "fill-current")} />
                   </button>
-                  <button onClick={startDelete} className="p-2 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-all" title="Delete">
+                  <button onClick={startDelete} className="p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </>
               ) : (
                 <>
-                  <button onClick={handleRestore} className="p-2 rounded-lg text-neutral-400 hover:text-green-500 hover:bg-green-500/10 transition-all" title="Restore">
+                  <button onClick={handleRestore} className="p-2 rounded-lg text-text-muted hover:text-green-500 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition-all" title="Restore">
                     <Clock className="h-3.5 w-3.5" />
                   </button>
-                  <button onClick={handlePermanentDelete} className="p-2 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-all" title="Delete Permanently">
+                  <button onClick={handlePermanentDelete} className="p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete Permanently">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </>
@@ -387,7 +406,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
         </div>
 
         {item.type === 'image' ? (
-          <div className="relative rounded-2xl overflow-hidden aspect-video bg-neutral-100 dark:bg-neutral-800 border dark:border-white/5 border-neutral-200 mb-4 cursor-pointer" onClick={() => setIsExpanded(true)}>
+          <div className="relative rounded-2xl overflow-hidden aspect-video bg-bg-primary border border-border-primary mb-4">
              <img 
                src={resolvedImageUrl} 
                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
@@ -395,61 +414,51 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                referrerPolicy="no-referrer"
                loading="lazy"
              />
-             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <div className="p-3 rounded-full bg-white/20 backdrop-blur-md border border-white/20">
-                   <Maximize2 className="h-4 w-4 text-white" />
-                </div>
-             </div>
           </div>
         ) : (
-          <div className="flex-1 min-h-[100px] mb-4 cursor-pointer px-1" onClick={() => setIsExpanded(true)}>
-            <p className="text-neutral-800 dark:text-neutral-200 text-sm font-medium leading-relaxed line-clamp-6 whitespace-pre-wrap">
+          <div className="flex-1 min-h-[100px] mb-4 px-1">
+            <p className="text-text-primary text-sm font-medium leading-relaxed line-clamp-6 whitespace-pre-wrap">
               {item.content}
             </p>
           </div>
         )}
 
-        <div className="flex items-center gap-3 mt-auto pt-4 border-t dark:border-white/5 border-neutral-100">
+        <div className="flex items-center gap-3 mt-auto pt-4 border-t border-border-primary">
            {cardLabel && (
-             <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-neutral-100 dark:bg-white/5 text-[8px] font-black uppercase text-neutral-500 tracking-wider">
+             <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-bg-primary text-[8px] font-black uppercase text-text-muted tracking-wider border border-border-primary">
                <Tag className="h-2.5 w-2.5" />
                {cardLabel.name}
              </div>
            )}
-           <div className="flex items-center gap-1.5 text-neutral-400 text-[9px] font-black uppercase tracking-widest">
+           <div className="flex items-center gap-1.5 text-text-muted text-[9px] font-black uppercase tracking-widest">
               <Clock className="h-3 w-3" />
               {relativeTime}
            </div>
            {item.reminder && (
              <div 
                onClick={handleRemoveReminder}
-               className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 text-blue-500 text-[8px] font-black uppercase cursor-pointer hover:bg-blue-500 hover:text-white transition-all scale-90 sm:scale-100"
+               className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 text-blue-500 text-[8px] font-black uppercase cursor-pointer hover:bg-blue-500 hover:text-white transition-all scale-90 sm:scale-100 border border-blue-500/20"
              >
                <Bell className="h-2.5 w-2.5 fill-current" />
                {new Date(item.reminder).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
              </div>
            )}
-           <div className="text-[8px] font-bold text-neutral-400 opacity-40 ml-auto uppercase tracking-tighter">
+           <div className="text-[8px] font-bold text-text-muted opacity-40 ml-auto uppercase tracking-tighter">
              {formatBytes(item.size || 0)}
            </div>
         </div>
 
         <div className="flex items-center gap-2 mt-4">
-           <button 
-             onClick={handleCopy}
-             className={cn(
-               "flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-[0.98]",
-               isCopied 
-                ? "bg-green-500/10 text-green-500 border border-green-500/20" 
-                : "bg-blue-500 text-white shadow-lg shadow-blue-500/10 hover:shadow-blue-500/20 hover:bg-blue-600"
-             )}
-           >
-             {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-             {isCopied ? "Copied" : "Copy"}
-           </button>
            {item.type === 'image' && (
-             <button onClick={() => setIsAnnotating(true)} className="p-3.5 rounded-xl bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-white dark:hover:bg-white/20 transition-all">
+             <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAnnotating(true);
+              }} 
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-bg-primary border border-border-primary text-text-secondary hover:text-blue-500 hover:bg-blue-500/5 hover:border-blue-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
+             >
                 <Pencil className="h-3.5 w-3.5" />
+                Annotate
              </button>
            )}
         </div>

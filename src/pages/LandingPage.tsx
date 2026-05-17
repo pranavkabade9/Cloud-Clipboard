@@ -80,7 +80,7 @@ const LandingPage = () => {
            <Icon className="h-6 w-6" />
         </div>
         <h3 className="text-xl font-bold mb-2 dark:text-white text-neutral-900 tracking-tight">{title}</h3>
-        <p className="text-neutral-500 font-medium text-sm leading-relaxed">{desc}</p>
+        <p className="text-text-secondary font-medium text-sm leading-relaxed">{desc}</p>
       </div>
     </motion.div>
   );
@@ -151,9 +151,9 @@ const LandingPage = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="max-w-2xl mx-auto text-lg md:text-xl font-medium dark:text-neutral-400 text-neutral-500 leading-relaxed mb-12"
+            className="max-w-2xl mx-auto text-lg md:text-xl font-medium text-text-secondary leading-relaxed mb-12"
           >
-            A premium universal clipboard workspace for screenshots, notes, drawings, and instant sync across devices.
+            A universal clipboard workspace for screenshots, notes, drawings, and instant sync across devices.
           </motion.p>
 
           <motion.div 
@@ -274,8 +274,8 @@ const LandingPage = () => {
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mb-20">
              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-500 mb-4 block">Modern Productivity</span>
-             <h2 className="text-4xl md:text-6xl font-bold dark:text-white text-neutral-900 mb-6 tracking-tight">Save Everything. Instantly.</h2>
-             <p className="text-lg font-medium text-neutral-500 leading-relaxed">
+             <h2 className="text-4xl md:text-6xl font-bold text-text-primary mb-6 tracking-tight">Save Everything. Instantly.</h2>
+             <p className="text-lg font-medium text-text-secondary leading-relaxed">
                CloudClip is designed to be the bridge between your devices. Copy on your phone, annotate on your tablet, and paste on your desktop in milliseconds.
              </p>
           </div>
@@ -284,7 +284,7 @@ const LandingPage = () => {
             <FeatureCard 
               icon={Smartphone} 
               title="Instant Sync" 
-              desc="Real-time synchronization across all your platforms with premium speed and reliability."
+              desc="Real-time synchronization across all your platforms with speed and reliability."
               delay={0.1}
             />
             <FeatureCard 
@@ -373,8 +373,8 @@ const LandingPage = () => {
                      <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-xl shadow-blue-500/20 mb-6 group-hover:scale-110 transition-transform">
                         <Zap className="h-8 w-8 text-white fill-white/20" />
                      </div>
-                     <h2 className="text-3xl font-extrabold text-neutral-900 dark:text-white tracking-tight">Welcome Back</h2>
-                     <p className="mt-2 text-neutral-500 font-medium">Continue your journey with CloudClip</p>
+                     <h2 className="text-3xl font-extrabold text-text-primary tracking-tight">Welcome Back</h2>
+                     <p className="mt-2 text-text-secondary font-medium">Continue your journey with CloudClip</p>
                   </div>
 
                   <div className="space-y-4">
@@ -423,7 +423,7 @@ const LandingPage = () => {
               </div>
               <span className="text-lg font-bold tracking-tighter dark:text-white text-neutral-900">CloudClip</span>
            </div>
-           <p className="text-sm font-medium text-neutral-500">© 2026 CloudClip Studios. Premium Clipboard SaaS.</p>
+           <p className="text-sm font-medium text-neutral-500">© 2026 CloudClip Studios. Vault Clipboard SaaS.</p>
            <div className="flex items-center gap-8">
               <button className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-blue-500 transition-colors">Privacy</button>
               <button className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-blue-500 transition-colors">Terms</button>

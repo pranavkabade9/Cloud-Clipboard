@@ -2,5 +2,7 @@
   "name": "Cloud Clipboard",
   "description": "A futuristic universal clipboard manager to instantly save, organize, and sync text and screenshots across devices.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

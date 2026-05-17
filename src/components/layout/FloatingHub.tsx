@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
@@ -7,11 +7,9 @@ import {
   Zap, 
   Settings, 
   LogOut, 
-  User,
-  Moon,
-  Sun,
   Clipboard,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../utils/utils';
@@ -28,9 +26,109 @@ const FloatingHub = () => {
     setIsSettingsOpen
   } = useStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [isPasting, setIsPasting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handlePaste = async () => {
+    if (isPasting) return;
+    setIsPasting(true);
+    
+    try {
+      const items = await navigator.clipboard.read();
+      let handled = false;
+
+      for (const item of items) {
+        // Image support
+        const imageType = item.types.find(t => t.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: imageType });
+          const { handleImageUpload } = await import('../../services/uploadService');
+          await handleImageUpload({ file, userId: user?.uid, isGuest });
+          handled = true;
+          break; 
+        }
+
+        // Text support
+        if (item.types.includes('text/plain')) {
+          const blob = await item.getType('text/plain');
+          const text = await blob.text();
+          if (text.trim()) {
+            const trimmedText = text.trim();
+            const itemSize = new Blob([trimmedText]).size;
+            
+            if (user) {
+               const { db, OperationType, handleFirestoreError } = await import('../../services/firebase');
+               const { collection, addDoc, serverTimestamp, updateDoc, doc, increment } = await import('firebase/firestore');
+               
+               const itemData = { 
+                 type: 'text', 
+                 content: trimmedText, 
+                 userId: user.uid, 
+                 createdAt: serverTimestamp(), 
+                 size: itemSize, 
+                 pinned: false 
+               };
+               
+               await addDoc(collection(db, 'clipboardItems'), itemData);
+               await updateDoc(doc(db, 'users', user.uid), { 
+                 storageUsed: increment(itemSize), 
+                 updatedAt: serverTimestamp() 
+               });
+            } else {
+               const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+               const newItem = { 
+                 id: crypto.randomUUID(), 
+                 type: 'text', 
+                 content: trimmedText, 
+                 size: itemSize, 
+                 createdAt: new Date().toISOString(), 
+                 pinned: false 
+               };
+               const updated = [newItem, ...localItems];
+               localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+               useStore.getState().setClipboardItems(updated);
+            }
+            handled = true;
+            toast.success("Content pasted to vault");
+          }
+        }
+      }
+
+      if (!handled) {
+        toast.error("Nothing to paste", { description: "Clipboard is empty or type not supported." });
+      }
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        toast.error("Allow clipboard access to paste content", { 
+          description: "Check your browser settings to enable clipboard permissions." 
+        });
+      } else {
+        console.error("Paste error:", err);
+        toast.error("Failed to paste from clipboard");
+      }
+    } finally {
+      setIsPasting(false);
+      setIsOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleMobilePaste = () => handlePaste();
+    window.addEventListener('clipboard-paste-mobile', handleMobilePaste);
+    return () => window.removeEventListener('clipboard-paste-mobile', handleMobilePaste);
+  }, [user, isGuest]);
+
   const actions = [
+    { 
+      id: 'paste',
+      icon: isPasting ? Loader2 : Clipboard,
+      label: 'Paste Now',
+      color: 'bg-green-500',
+      desc: isMobile ? 'Cloud Sync Paste' : 'Desktop Link',
+      mobileOnly: true,
+      action: handlePaste
+    },
     { 
       id: 'note', 
       icon: StickyNote, 
@@ -53,17 +151,6 @@ const FloatingHub = () => {
         setIsOpen(false);
       }
     },
-    {
-       id: 'settings',
-       icon: Settings,
-       label: 'Account Hub',
-       color: 'bg-neutral-600',
-       desc: 'Preferences & Cloud',
-       action: () => {
-          setIsSettingsOpen(true);
-          setIsOpen(false);
-       }
-    }
   ];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

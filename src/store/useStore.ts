@@ -49,7 +49,6 @@ interface AppState {
   isNoteEditorOpen: boolean;
   isSettingsOpen: boolean;
   authInitialized: boolean;
-  history: any[];
   
   setAuthInitialized: (initialized: boolean) => void;
   setUser: (user: FirebaseUser | null) => void;
@@ -68,10 +67,6 @@ interface AppState {
   setIsSidebarOpen: (isOpen: boolean) => void;
   setIsNoteEditorOpen: (isOpen: boolean) => void;
   setIsSettingsOpen: (isOpen: boolean) => void;
-  pushToHistory: (action: { type: string; payload: any }) => void;
-  undo: () => any;
-  refreshData: () => void;
-  refreshTrigger: number;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -81,8 +76,8 @@ export const useStore = create<AppState>((set) => ({
   clipboardItems: [],
   uploadingItems: [],
   labels: [],
-  storageLimit: 5 * 1024 * 1024 * 1024,
-  theme: (localStorage.getItem('theme') as 'dark' | 'light') || 'dark',
+  storageLimit: 10 * 1024 * 1024,
+  theme: (localStorage.getItem('theme') as 'dark' | 'light') || 'light',
   searchQuery: '',
   activeFilter: 'all',
   animationsEnabled: JSON.parse(localStorage.getItem('animations_enabled') ?? 'true'),
@@ -91,8 +86,6 @@ export const useStore = create<AppState>((set) => ({
   isNoteEditorOpen: false,
   isSettingsOpen: false,
   authInitialized: false,
-  history: [],
-  refreshTrigger: 0,
 
   setAuthInitialized: (authInitialized) => set({ authInitialized }),
   setUser: (user) => set({ user }),
@@ -121,20 +114,6 @@ export const useStore = create<AppState>((set) => ({
   setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
   setIsNoteEditorOpen: (isNoteEditorOpen) => set({ isNoteEditorOpen }),
   setIsSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
-  pushToHistory: (action) => set((state) => ({ 
-    history: [action, ...state.history].slice(0, 50) 
-  })),
-  undo: () => {
-    let lastAction = null;
-    set((state) => {
-      if (state.history.length === 0) return state;
-      const [action, ...rest] = state.history;
-      lastAction = action;
-      return { history: rest };
-    });
-    return lastAction;
-  },
-  refreshData: () => set((state) => ({ refreshTrigger: state.refreshTrigger + 1 })),
 }));
 
 
