@@ -15,6 +15,7 @@ import { useStore } from '../store/useStore';
 export const initAuth = () => {
   onAuthStateChanged(auth, async (user) => {
     useStore.getState().setUser(user);
+    useStore.getState().setAuthInitialized(true);
     if (user) {
       useStore.getState().setIsGuest(false);
       // Fetch user profile from Firestore

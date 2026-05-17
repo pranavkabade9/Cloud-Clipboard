@@ -16,9 +16,11 @@ import {
   Star,
   RefreshCcw,
   RotateCcw,
-  Copy
+  Copy,
+  Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ReminderModal from '../reminders/ReminderModal';
 import { 
   doc, 
   deleteDoc, 
@@ -35,6 +37,8 @@ import DrawingCanvas from '../drawing/DrawingCanvas';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 
+import { handleImageUpload } from '../../services/uploadService';
+
 interface ClipboardCardProps {
   item: any;
 }
@@ -46,8 +50,67 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [editContent, setEditContent] = useState(item.content || '');
+
+  const handleReminderSave = useCallback(async (date: Date) => {
+    const reminderTime = date.toISOString();
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'clipboardItems', item.id), { reminder: reminderTime });
+        toast.success("Reminder set");
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
+      }
+    } else if (isGuest) {
+      const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, reminder: reminderTime } : i);
+      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+      useStore.getState().setClipboardItems(updated);
+      toast.success("Reminder set locally");
+    }
+  }, [item.id, user, isGuest]);
+
+  const handleRemoveReminder = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'clipboardItems', item.id), { reminder: null });
+        toast.success("Reminder removed");
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
+      }
+    } else if (isGuest) {
+      const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, reminder: null } : i);
+      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+      useStore.getState().setClipboardItems(updated);
+      toast.success("Reminder removed");
+    }
+  }, [item.id, user, isGuest]);
   const [relativeTime, setRelativeTime] = useState(getRelativeTime(new Date(item.createdAt?.seconds * 1000 || item.createdAt)));
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let url: string | undefined = undefined;
+    if (item.imageUrl?.startsWith('idb://')) {
+      const mediaId = item.imageUrl.replace('idb://', '');
+      import('../../utils/idb').then(({ getMedia }) => {
+        getMedia(mediaId).then(blob => {
+          if (blob) {
+            url = URL.createObjectURL(blob);
+            setResolvedImageUrl(url);
+          }
+        });
+      });
+    } else {
+      setResolvedImageUrl(item.imageUrl);
+    }
+
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [item.imageUrl]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -61,7 +124,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
       if (item.type === 'text') {
         await navigator.clipboard.writeText(item.content);
       } else {
-        const response = await fetch(item.imageUrl);
+        const response = await fetch(resolvedImageUrl || '');
         const blob = await response.blob();
         const clipboardItem = new ClipboardItem({ [blob.type]: blob });
         await navigator.clipboard.write([clipboardItem]);
@@ -72,7 +135,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     } catch (err) {
       toast.error("Copy failed");
     }
-  }, [item.content, item.imageUrl, item.type]);
+  }, [item.content, resolvedImageUrl, item.type]);
 
   const handlePin = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -179,6 +242,10 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   };
 
     try {
+      useStore.getState().pushToHistory({
+        type: 'CLIP_DELETE',
+        payload: { id: item.id, originalState: { deleted: false } }
+      });
       await performSoftDelete(true);
       toast.success("Moved to Bin", {
         action: {
@@ -194,20 +261,25 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
 
   const handleDownload = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    if (item.imageUrl) {
+    if (resolvedImageUrl) {
       const link = document.createElement('a');
-      link.href = item.imageUrl;
+      link.href = resolvedImageUrl;
       link.download = `clip_${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
-  }, [item.imageUrl]);
+  }, [resolvedImageUrl]);
 
   const handleSaveEdit = useCallback(async () => {
     if (!editContent.trim()) return;
+    const previousContent = item.content;
     if (user) {
       try {
+        useStore.getState().pushToHistory({
+          type: 'CLIP_EDIT',
+          payload: { id: item.id, previousContent }
+        });
         await updateDoc(doc(db, 'clipboardItems', item.id), { 
           content: editContent.trim(),
           updatedAt: serverTimestamp() 
@@ -218,6 +290,10 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
         handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
       }
     } else if (isGuest) {
+      useStore.getState().pushToHistory({
+        type: 'CLIP_EDIT',
+        payload: { id: item.id, previousContent }
+      });
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
       const updated = localItems.map((i: any) => i.id === item.id ? { ...i, content: editContent.trim() } : i);
       localStorage.setItem('guest_clipboard', JSON.stringify(updated));
@@ -228,57 +304,13 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   }, [item.id, editContent, user, isGuest]);
 
   const handleAnnotateSave = useCallback(async (blob: Blob) => {
-    const loadingToast = toast.loading("Saving edit...");
-    try {
-      const file = new File([blob], `edit-${Date.now()}.png`, { type: 'image/png' });
-      const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1600, useWebWorker: true };
-      const compressedFile = await imageCompression(file, options);
-      
-      let imageUrl = '';
-      if (user) {
-        const storageRef = ref(storage, `clips/${user.uid}/edit-${Date.now()}.png`);
-        const snapshot = await uploadBytes(storageRef, compressedFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
-
-        const itemData = {
-          type: 'image',
-          imageUrl,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-          size: compressedFile.size,
-          pinned: false,
-        };
-        await addDoc(collection(db, 'clipboardItems'), itemData);
-        await updateDoc(doc(db, 'users', user.uid), {
-          storageUsed: increment(compressedFile.size),
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        const reader = new FileReader();
-        imageUrl = await new Promise((resolve) => {
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.readAsDataURL(compressedFile);
-        });
-        const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-        const newItem = {
-          id: crypto.randomUUID(),
-          type: 'image',
-          imageUrl,
-          size: compressedFile.size,
-          createdAt: new Date().toISOString(),
-          pinned: false,
-        };
-        const updated = [newItem, ...localItems];
-        localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-        useStore.getState().setClipboardItems(updated);
-      }
-      toast.dismiss(loadingToast);
-      toast.success("Annotation saved");
-      setIsAnnotating(false);
-    } catch (err) {
-      toast.dismiss(loadingToast);
-      toast.error("Save failed");
-    }
+    const file = new File([blob], `edit-${Date.now()}.png`, { type: 'image/png' });
+    await handleImageUpload({
+      file,
+      userId: user?.uid,
+      isGuest,
+      onSuccess: () => setIsAnnotating(false),
+    });
   }, [user, isGuest]);
 
   const cardLabel = labels.find(l => l.id === item.labelId);
@@ -307,6 +339,19 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
            <div className="lg:opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
               {!item.deleted ? (
                 <>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsReminderModalOpen(true);
+                    }} 
+                    className={cn(
+                      "p-2 rounded-lg transition-all",
+                      item.reminder ? "text-blue-500 bg-blue-500/10" : "text-neutral-400 hover:text-white hover:bg-neutral-800"
+                    )}
+                    title="Set Reminder"
+                  >
+                    <Bell className={cn("h-3.5 w-3.5", item.reminder && "fill-current")} />
+                  </button>
                   <button 
                     onClick={handleArchive} 
                     className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all"
@@ -344,7 +389,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
         {item.type === 'image' ? (
           <div className="relative rounded-2xl overflow-hidden aspect-video bg-neutral-100 dark:bg-neutral-800 border dark:border-white/5 border-neutral-200 mb-4 cursor-pointer" onClick={() => setIsExpanded(true)}>
              <img 
-               src={item.imageUrl} 
+               src={resolvedImageUrl} 
                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                alt="Snippet" 
                referrerPolicy="no-referrer"
@@ -375,6 +420,15 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               <Clock className="h-3 w-3" />
               {relativeTime}
            </div>
+           {item.reminder && (
+             <div 
+               onClick={handleRemoveReminder}
+               className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 text-blue-500 text-[8px] font-black uppercase cursor-pointer hover:bg-blue-500 hover:text-white transition-all scale-90 sm:scale-100"
+             >
+               <Bell className="h-2.5 w-2.5 fill-current" />
+               {new Date(item.reminder).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+             </div>
+           )}
            <div className="text-[8px] font-bold text-neutral-400 opacity-40 ml-auto uppercase tracking-tighter">
              {formatBytes(item.size || 0)}
            </div>
@@ -426,7 +480,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                    isEditing && "ring-2 ring-blue-500"
                  )}>
                   {item.type === 'image' ? (
-                    <img src={item.imageUrl} className="w-full h-full object-contain" alt="Deep view" referrerPolicy="no-referrer" />
+                    <img src={resolvedImageUrl} className="w-full h-full object-contain" alt="Deep view" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="w-full h-full p-8 lg:p-16 overflow-y-auto custom-scrollbar flex flex-col h-full">
                       {isEditing ? (
@@ -515,12 +569,19 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
       <AnimatePresence>
         {isAnnotating && (
           <DrawingCanvas 
-            initialImage={item.imageUrl}
+            initialImage={resolvedImageUrl}
             onClose={() => setIsAnnotating(false)}
             onSave={handleAnnotateSave}
           />
         )}
       </AnimatePresence>
+
+      <ReminderModal 
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        onSave={handleReminderSave}
+        initialDate={item.reminder}
+      />
     </motion.div>
   );
 });

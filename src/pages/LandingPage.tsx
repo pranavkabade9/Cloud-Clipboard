@@ -38,8 +38,32 @@ const LandingPage = () => {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
 
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const handleGuestMode = () => {
     setIsGuest(true);
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      console.error("Sign in failed", error);
+      const { toast } = await import('sonner');
+      if (error.code === 'auth/unauthorized-domain') {
+        toast.error("Domain Error", {
+          description: "This domain is not authorized in Firebase Console. Please add it to your Authorized Domains list.",
+          duration: 6000
+        });
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        toast.info("Login cancelled", { description: "The sign-in popup was closed." });
+      } else {
+        toast.error("Sign in failed", { description: error.message || "An unexpected error occurred during sign-in." });
+      }
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
   const FeatureCard = ({ icon: Icon, title, desc, delay = 0 }: any) => (
@@ -355,11 +379,16 @@ const LandingPage = () => {
 
                   <div className="space-y-4">
                     <button 
-                      onClick={() => signInWithGoogle()}
-                      className="group flex w-full items-center justify-center gap-4 rounded-3xl border dark:border-white/10 border-neutral-200 dark:bg-white/5 bg-neutral-50 px-8 py-5 font-bold dark:text-white text-neutral-900 transition-all hover:bg-neutral-100 dark:hover:bg-white/10 hover:shadow-lg hover:shadow-blue-500/5 active:scale-[0.98] shadow-sm"
+                      onClick={handleGoogleSignIn}
+                      disabled={isSigningIn}
+                      className="group flex w-full items-center justify-center gap-4 rounded-3xl border dark:border-white/10 border-neutral-200 dark:bg-white/5 bg-neutral-50 px-8 py-5 font-bold dark:text-white text-neutral-900 transition-all hover:bg-neutral-100 dark:hover:hover:bg-neutral-200 dark:hover:bg-white/10 hover:shadow-lg hover:shadow-blue-500/5 active:scale-[0.98] shadow-sm disabled:opacity-50"
                     >
-                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="h-6 w-6 group-hover:scale-110 transition-transform" alt="Google" />
-                      Continue with Google
+                      {isSigningIn ? (
+                        <div className="h-5 w-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                      ) : (
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="h-6 w-6 group-hover:scale-110 transition-transform" alt="Google" />
+                      )}
+                      {isSigningIn ? "Signing you in..." : "Continue with Google"}
                     </button>
                     
                     <div className="relative my-10 flex items-center justify-center">

@@ -68,33 +68,24 @@ const DrawingCanvas = ({ onSave, onClose, initialImage }: DrawingCanvasProps) =>
     { name: 'Violet', color: '#8b5cf6' },
   ];
 
-  // Initialize canvas size
-  useEffect(() => {
-    const handleResize = () => {
-      if (canvasRef.current && containerRef.current) {
-        const canvas = canvasRef.current;
-        const container = containerRef.current;
-        const rect = container.getBoundingClientRect();
-        
-        canvas.width = rect.width * window.devicePixelRatio;
-        canvas.height = rect.height * window.devicePixelRatio;
-        canvas.style.width = `${rect.width}px`;
-        canvas.style.height = `${rect.height}px`;
-        
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          drawAll();
-        }
-      }
-    };
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIdx = historyIndex - 1;
+      setHistoryIndex(newIdx);
+      setStrokes(history[newIdx]);
+    } else if (historyIndex === 0) {
+      setHistoryIndex(-1);
+      setStrokes([]);
+    }
+  }, [history, historyIndex]);
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIdx = historyIndex + 1;
+      setHistoryIndex(newIdx);
+      setStrokes(history[newIdx]);
+    }
+  }, [history, historyIndex]);
 
   const drawStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (stroke.points.length < 2) return;
@@ -176,6 +167,50 @@ const DrawingCanvas = ({ onSave, onClose, initialImage }: DrawingCanvasProps) =>
     drawAll();
   }, [drawAll]);
 
+  // Initialize canvas size
+  useEffect(() => {
+    const handleResize = () => {
+      if (canvasRef.current && containerRef.current) {
+        const canvas = canvasRef.current;
+        const container = containerRef.current;
+        const rect = container.getBoundingClientRect();
+        
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          drawAll();
+        }
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [undo, redo, drawAll]);
+
   const handlePointerDown = (e: React.PointerEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -232,25 +267,6 @@ const DrawingCanvas = ({ onSave, onClose, initialImage }: DrawingCanvasProps) =>
     newHistory.push(newStrokes);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
-  };
-
-  const undo = () => {
-    if (historyIndex > 0) {
-      const newIdx = historyIndex - 1;
-      setHistoryIndex(newIdx);
-      setStrokes(history[newIdx]);
-    } else if (historyIndex === 0) {
-      setHistoryIndex(-1);
-      setStrokes([]);
-    }
-  };
-
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const newIdx = historyIndex + 1;
-      setHistoryIndex(newIdx);
-      setStrokes(history[newIdx]);
-    }
   };
 
   const clear = () => {

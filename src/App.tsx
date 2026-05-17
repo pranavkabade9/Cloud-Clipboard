@@ -2,16 +2,19 @@ import React, { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { useStore } from './store/useStore';
 import { initAuth } from './services/auth';
+import { reminderManager } from './services/reminderManager';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 
 import { cn } from './utils/utils';
 
 export default function App() {
-  const { user, isGuest, theme } = useStore();
+  const { user, isGuest, theme, authInitialized } = useStore();
 
   useEffect(() => {
     initAuth();
+    reminderManager.start();
+    return () => reminderManager.stop();
   }, []);
 
   useEffect(() => {
@@ -21,6 +24,21 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  if (!authInitialized) {
+    return (
+      <div className={cn(
+        "min-h-screen flex items-center justify-center",
+        theme === 'dark' ? "bg-neutral-950" : "bg-neutral-50"
+      )}>
+        <div className="relative">
+          <div className="h-20 w-20 rounded-[24px] bg-blue-500 flex items-center justify-center animate-pulse shadow-2xl shadow-blue-500/20">
+             <div className="h-10 w-10 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen font-sans transition-colors duration-300 ${theme === 'dark' ? 'bg-neutral-950 text-neutral-100' : 'bg-neutral-50 text-neutral-900'}`}>

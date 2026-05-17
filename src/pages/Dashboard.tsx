@@ -3,21 +3,116 @@ import { motion, AnimatePresence } from 'motion/react';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
 import MobileNav from '../components/layout/MobileNav';
+import FloatingHub from '../components/layout/FloatingHub';
 import ClipboardInput from '../components/clipboard/ClipboardInput';
 import ClipboardGrid from '../components/clipboard/ClipboardGrid';
+import NoteEditor from '../components/clipboard/NoteEditor';
 import { useStore } from '../store/useStore';
 import { db, auth, OperationType, handleFirestoreError, storage } from '../services/firebase';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, increment } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, increment, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { toast } from 'sonner';
 import { cn } from '../utils/utils';
-import { Upload, Cloud as CloudIcon } from 'lucide-react';
+import { Upload, Cloud as CloudIcon, Plus, StickyNote } from 'lucide-react';
+
+import { handleImageUpload } from '../services/uploadService';
 
 const Dashboard = () => {
-  const { user, isGuest, theme, setClipboardItems, setLabels, userProfile, storageLimit, isMobile, setIsMobile } = useStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { 
+    user, 
+    isGuest, 
+    theme, 
+    setClipboardItems, 
+    setLabels, 
+    userProfile, 
+    storageLimit, 
+    isMobile, 
+    setIsMobile,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    activeFilter,
+    isNoteEditorOpen,
+    setIsNoteEditorOpen,
+    undo,
+    refreshTrigger
+  } = useStore();
   const [isDragging, setIsDragging] = useState(false);
+
+  const handleUndoAction = useCallback(async () => {
+    const lastAction = undo();
+    if (!lastAction) return;
+
+    const { type, payload } = lastAction;
+    
+    try {
+      if (type === 'CLIP_DELETE') {
+        const { id, originalState } = payload;
+        if (user) {
+          await updateDoc(doc(db, 'clipboardItems', id), originalState);
+        } else if (isGuest) {
+          const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+          const updated = localItems.map((i: any) => i.id === id ? { ...i, ...originalState } : i);
+          localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+          useStore.getState().setClipboardItems(updated);
+        }
+        toast.info("Delete undone");
+      } else if (type === 'CLIP_CREATE') {
+        // Undo create = delete
+        const { id, size } = payload;
+        if (user) {
+          await deleteDoc(doc(db, 'clipboardItems', id));
+          await updateDoc(doc(db, 'users', user.uid), {
+            storageUsed: increment(-size),
+            updatedAt: serverTimestamp()
+          });
+        } else if (isGuest) {
+          const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+          const filtered = localItems.filter((i: any) => i.id !== id);
+          localStorage.setItem('guest_clipboard', JSON.stringify(filtered));
+          useStore.getState().setClipboardItems(filtered);
+        }
+        toast.info("Creation undone");
+      } else if (type === 'CLIP_EDIT') {
+        const { id, previousContent } = payload;
+        if (user) {
+          await updateDoc(doc(db, 'clipboardItems', id), { content: previousContent });
+        } else if (isGuest) {
+          const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+          const updated = localItems.map((i: any) => i.id === id ? { ...i, content: previousContent } : i);
+          localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+          useStore.getState().setClipboardItems(updated);
+        }
+        toast.info("Edit undone");
+      }
+    } catch (error) {
+      console.error("Undo failed:", error);
+      toast.error("Could not undo action");
+    }
+  }, [undo, user, isGuest]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl + Z Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+        e.preventDefault();
+        handleUndoAction();
+      }
+      
+      // Refresh with 'r' key (if not in input)
+      if (e.key.toLowerCase() === 'r') {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+        e.preventDefault();
+        useStore.getState().refreshData();
+        toast.info("Vault refreshed");
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndoAction]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -49,7 +144,12 @@ const Dashboard = () => {
           size: itemSize,
           pinned: data.pinned || false,
         };
-        await addDoc(collection(db, 'clipboardItems'), itemData);
+        await addDoc(collection(db, 'clipboardItems'), itemData).then(docRef => {
+          useStore.getState().pushToHistory({
+            type: 'CLIP_CREATE',
+            payload: { id: docRef.id, size: itemSize }
+          });
+        });
         await updateDoc(doc(db, 'users', user.uid), {
           storageUsed: increment(itemSize),
           updatedAt: serverTimestamp(),
@@ -70,43 +170,21 @@ const Dashboard = () => {
       const updatedItems = [newItem, ...localItems];
       localStorage.setItem('guest_clipboard', JSON.stringify(updatedItems));
       setClipboardItems(updatedItems);
+      useStore.getState().pushToHistory({
+        type: 'CLIP_CREATE',
+        payload: { id: newItem.id, size: itemSize }
+      });
       toast.success("Saved locally");
     }
   };
 
   const handleImageFile = useCallback(async (file: File) => {
-    const loadingToast = toast.loading("Uploading media...");
-    const tempId = crypto.randomUUID();
-    const { addUploadingItem, removeUploadingItem } = useStore.getState();
-    addUploadingItem({ id: tempId, type: 'image' });
-
-    try {
-      const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1600, useWebWorker: true };
-      const compressedFile = await imageCompression(file, options);
-      
-      let imageUrl = '';
-      if (user) {
-        const storageRef = ref(storage, `clips/${user.uid}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`);
-        const snapshot = await uploadBytes(storageRef, compressedFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
-      } else {
-        const reader = new FileReader();
-        imageUrl = await new Promise((resolve) => {
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.readAsDataURL(compressedFile);
-        });
-      }
-      await saveToClipboard({ type: 'image', imageUrl, size: compressedFile.size });
-      toast.dismiss(loadingToast);
-      toast.success("Saved to vault");
-    } catch (err) {
-      toast.dismiss(loadingToast);
-      toast.error("Upload failed");
-      console.error(err);
-    } finally {
-      removeUploadingItem(tempId);
-    }
-  }, [user, isGuest, userProfile, storageLimit]);
+    await handleImageUpload({
+      file,
+      userId: user?.uid,
+      isGuest,
+    });
+  }, [user, isGuest]);
 
   const handleGlobalPaste = useCallback(async (e: ClipboardEvent) => {
     if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
@@ -200,7 +278,7 @@ const Dashboard = () => {
       const localLabels = JSON.parse(localStorage.getItem('guest_labels') || '[]');
       setLabels(localLabels);
     }
-  }, [user, isGuest]);
+  }, [user, isGuest, refreshTrigger]);
 
   return (
     <div 
@@ -212,22 +290,91 @@ const Dashboard = () => {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      {!isMobile && <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />}
+      <AnimatePresence mode="wait">
+        {(!isMobile || isSidebarOpen) && (
+          <motion.div
+            initial={isMobile ? { x: -300 } : false}
+            animate={{ x: 0 }}
+            exit={{ x: -300 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className={cn(
+              isMobile ? "fixed inset-y-0 left-0 z-[110] shadow-2xl" : "relative"
+            )}
+          >
+            <Sidebar />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isMobile && isSidebarOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[105]"
+        />
+      )}
       
       <main className="relative flex-1 flex flex-col min-w-0 transition-all duration-500 overflow-hidden">
         <Navbar />
         
         <div className="flex-1 overflow-y-auto px-4 lg:px-8 pt-24 lg:pt-28 pb-32 lg:pb-12 custom-scrollbar">
           <div className="max-w-5xl mx-auto space-y-12">
-            <div className="flex justify-center">
-              <ClipboardInput />
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">
+                  {activeFilter === 'all' ? 'Unified Stream' : 
+                  activeFilter === 'reminders' ? 'Time Sensitive' :
+                  activeFilter === 'notes' ? 'Text Collection' :
+                  activeFilter === 'images' ? 'Media Gallery' :
+                  activeFilter === 'bin' ? 'Cleanup required' : 'Collection'}
+                </span>
+                <h1 className="text-3xl lg:text-4xl font-black dark:text-white text-neutral-900 tracking-tight capitalize">
+                  {activeFilter === 'all' ? 'Everything' : activeFilter}
+                </h1>
+              </div>
+
+              {activeFilter === 'notes' && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setIsNoteEditorOpen(true)}
+                  className="flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold transition-all shadow-xl shadow-blue-500/20"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Note
+                </motion.button>
+              )}
             </div>
+
+            <AnimatePresence>
+              {isNoteEditorOpen && (
+                <NoteEditor 
+                  isOpen={isNoteEditorOpen}
+                  onClose={() => setIsNoteEditorOpen(false)}
+                  onSave={(content) => {
+                    saveToClipboard({
+                      type: 'text',
+                      content: content,
+                    });
+                  }}
+                />
+              )}
+            </AnimatePresence>
+
+            {activeFilter === 'all' && (
+              <div className="flex justify-center">
+                <ClipboardInput onSave={saveToClipboard} />
+              </div>
+            )}
             
             <ClipboardGrid />
           </div>
         </div>
 
         {isMobile && <MobileNav />}
+        <FloatingHub />
 
         <AnimatePresence>
           {isDragging && (

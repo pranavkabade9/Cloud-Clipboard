@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutGrid, 
   Type, 
@@ -29,18 +29,30 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
     )}
   >
     <item.icon className={cn(
-      "h-5 w-5 transition-transform duration-300 group-hover:scale-110",
+      "h-5 w-5 transition-transform duration-300 group-hover:scale-110 shrink-0",
       activeFilter === item.id && "scale-110"
     )} />
-    {isOpen && (
-      <motion.span 
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="font-bold text-sm tracking-tight"
-      >
+    
+    {!isOpen && (
+      <div className="absolute left-full ml-4 px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[100] shadow-xl border border-white/10">
         {item.label}
-      </motion.span>
+        <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-neutral-900" />
+      </div>
     )}
+
+    <AnimatePresence>
+      {isOpen && (
+        <motion.span 
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          className="font-bold text-sm tracking-tight whitespace-nowrap"
+        >
+          {item.label}
+        </motion.span>
+      )}
+    </AnimatePresence>
+
     {activeFilter === item.id && (
       <motion.div 
         layoutId="active-pill"
@@ -51,12 +63,11 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
 );
 
 interface SidebarProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  // Props removed in favor of global store
 }
 
-const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
-  const { activeFilter, setActiveFilter, userProfile, storageLimit } = useStore();
+const Sidebar = () => {
+  const { activeFilter, setActiveFilter, userProfile, storageLimit, isSidebarOpen, setIsSidebarOpen } = useStore();
 
   const primaryItems = [
     { id: 'all', icon: LayoutGrid, label: 'Everything' },
@@ -80,17 +91,24 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isOpen ? 280 : 88 }}
-      className="relative z-50 flex flex-col h-screen border-r dark:border-white/5 border-neutral-200 dark:bg-neutral-950 bg-white font-['Poppins']"
+      animate={{ width: isSidebarOpen ? 280 : 88 }}
+      className="relative z-50 flex flex-col h-screen border-r border-border-primary bg-bg-secondary font-['Poppins']"
     >
-      <div className="flex items-center h-20 px-6">
+      <div 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="flex items-center h-20 px-6 cursor-pointer group"
+      >
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 shadow-xl shadow-blue-500/20 rotate-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 shadow-xl shadow-blue-500/20 rotate-3 group-hover:rotate-6 transition-transform">
             <Zap className="h-6 w-6 text-white" />
           </div>
-          {isOpen && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="ml-2">
-              <span className="text-xl font-black tracking-tighter dark:text-white text-neutral-900 block leading-tight">Vault</span>
+          {isSidebarOpen && (
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }} 
+              animate={{ opacity: 1, x: 0 }} 
+              className="ml-2"
+            >
+              <span className="text-xl font-black tracking-tighter text-text-primary block leading-tight">Vault</span>
               <span className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-500 block">Cloud Clip</span>
             </motion.div>
           )}
@@ -105,15 +123,15 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
               item={item} 
               activeFilter={activeFilter} 
               setActiveFilter={setActiveFilter} 
-              isOpen={isOpen} 
+              isOpen={isSidebarOpen} 
             />
           ))}
         </div>
 
         <div className="space-y-3">
-          {isOpen && (
+          {isSidebarOpen && (
             <div className="px-4">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-400/60">Organization</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary/60">Organization</span>
             </div>
           )}
           <div className="space-y-1">
@@ -123,16 +141,16 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 item={item} 
                 activeFilter={activeFilter} 
                 setActiveFilter={setActiveFilter} 
-                isOpen={isOpen} 
+                isOpen={isSidebarOpen} 
               />
             ))}
           </div>
         </div>
 
         <div className="space-y-3">
-          {isOpen && (
+          {isSidebarOpen && (
             <div className="px-4">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-400/60">Cleanup</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary/60">Cleanup</span>
             </div>
           )}
           <div className="space-y-1">
@@ -142,7 +160,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 item={item} 
                 activeFilter={activeFilter} 
                 setActiveFilter={setActiveFilter} 
-                isOpen={isOpen} 
+                isOpen={isSidebarOpen} 
               />
             ))}
           </div>
@@ -150,9 +168,9 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
       </div>
 
       <div className="p-6 space-y-6 mt-auto">
-        {isOpen && (
-          <div className="p-5 rounded-3xl bg-neutral-50 dark:bg-white/[0.02] border dark:border-white/5 border-neutral-100">
-            <div className="flex items-center justify-between mb-3 text-neutral-500">
+        {isSidebarOpen && (
+          <div className="p-5 rounded-3xl bg-bg-primary border border-border-primary">
+            <div className="flex items-center justify-between mb-3 text-text-secondary">
                <div className="flex items-center gap-2">
                   <HardDrive className="h-3.5 w-3.5" />
                   <span className="text-[9px] font-black uppercase tracking-widest">Digital Weight</span>
@@ -174,13 +192,20 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-           <button onClick={() => setIsOpen(!isOpen)} className="p-3.5 rounded-2xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 hover:text-blue-500 transition-all border border-transparent hover:border-neutral-200 dark:hover:border-white/5">
-             <ChevronLeft className={cn("h-5 w-5 transition-transform duration-500", !isOpen && "rotate-180")} />
+        <div className="flex items-center gap-3">
+           <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
+           >
+             <ChevronLeft className={cn("h-5 w-5 transition-transform duration-500 relative z-10", !isSidebarOpen && "rotate-180")} />
+             <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.03] transition-colors" />
            </button>
            
-           <button className="p-3.5 rounded-2xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 hover:text-blue-500 transition-all border border-transparent hover:border-neutral-200 dark:hover:border-white/5">
-             <Settings className="h-5 w-5" />
+           <button 
+            className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
+           >
+             <Settings className="h-5 w-5 relative z-10 transition-transform group-hover:rotate-45" />
+             <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.03] transition-colors" />
            </button>
         </div>
       </div>

@@ -120,22 +120,56 @@ const ClipboardGrid = () => {
               {activeFilter === 'bin' && recentItems.length > 0 && (
                 <button
                   onClick={async () => {
-                    if (!confirm("Empty Bin? Items will be PERMANENTLY deleted.")) return;
+                    const confirmed = window.confirm("Empty Bin? This will permanently delete all items in the bin and remove their storage footprint.");
+                    if (!confirmed) return;
+                    
                     const { user, isGuest, clipboardItems } = useStore.getState();
-                    const { deleteDoc, doc } = await import('firebase/firestore');
-                    const { db } = await import('../../services/firebase');
                     const deletedItems = clipboardItems.filter(i => i.deleted);
-                    if (user) {
-                      await Promise.all(deletedItems.map(i => deleteDoc(doc(db, 'clipboardItems', i.id))));
-                    } else if (isGuest) {
-                      const remaining = clipboardItems.filter(i => !i.deleted);
-                      localStorage.setItem('guest_clipboard', JSON.stringify(remaining));
-                      useStore.getState().setClipboardItems(remaining);
+                    
+                    try {
+                      if (user) {
+                        const { deleteDoc, doc, updateDoc, increment } = await import('firebase/firestore');
+                        const { deleteObject, ref } = await import('firebase/storage');
+                        const { db, storage } = await import('../../services/firebase');
+                        
+                        let totalSizeFreed = 0;
+                        
+                        await Promise.all(deletedItems.map(async (item) => {
+                          // Delete from Firestore
+                          await deleteDoc(doc(db, 'clipboardItems', item.id));
+                          totalSizeFreed += item.size || 0;
+                          
+                          // If it's an image, delete from Storage
+                          if (item.type === 'image' && item.metadata?.storagePath) {
+                            try {
+                              const imageRef = ref(storage, item.metadata.storagePath);
+                              await deleteObject(imageRef);
+                            } catch (e) {
+                              console.error("Failed to delete storage object", e);
+                            }
+                          }
+                        }));
+
+                        // Update storage weight in profile
+                        await updateDoc(doc(db, 'users', user.uid), {
+                          storageUsed: increment(-totalSizeFreed)
+                        });
+                        
+                      } else if (isGuest) {
+                        const remaining = clipboardItems.filter(i => !i.deleted);
+                        localStorage.setItem('guest_clipboard', JSON.stringify(remaining));
+                        useStore.getState().setClipboardItems(remaining);
+                      }
+                      
+                      import('sonner').then(({ toast }) => toast.success("Bin cleared successfully"));
+                    } catch (error) {
+                      console.error("Error emptying bin:", error);
+                      import('sonner').then(({ toast }) => toast.error("Failed to empty bin"));
                     }
                   }}
-                  className="ml-auto px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                  className="ml-auto px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-lg shadow-red-500/5 active:scale-95"
                 >
-                  Empty Bin
+                  Vacuum Bin
                 </button>
               )}
               <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800/50" />
@@ -148,10 +182,20 @@ const ClipboardGrid = () => {
                     key={item.id}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-8 dark:bg-neutral-900 bg-white border dark:border-white/5 border-neutral-200 rounded-[28px] flex flex-col items-center justify-center gap-4 opacity-50"
+                    className="relative p-0 dark:bg-neutral-900 bg-white border dark:border-white/5 border-neutral-200 rounded-[28px] overflow-hidden flex flex-col items-center justify-center gap-4 opacity-70 min-h-[160px]"
                   >
-                    <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Uploading...</span>
+                    {item.imageUrl ? (
+                      <div className="absolute inset-0 z-0">
+                         <img src={item.imageUrl} className="w-full h-full object-cover blur-sm" alt="Preview" />
+                         <div className="absolute inset-0 bg-black/40" />
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-neutral-100 dark:bg-neutral-800" />
+                    )}
+                    <div className="relative z-10 flex flex-col items-center gap-3">
+                      <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Uploading...</span>
+                    </div>
                   </motion.div>
                 ))}
                 {recentItems.map((item) => (

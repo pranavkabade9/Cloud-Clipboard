@@ -7,11 +7,33 @@
   --color-brand-primary: #3b82f6;
   --color-brand-secondary: #8b5cf6;
   --color-accent-pink: #ec4899;
+
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-primary: var(--border-primary);
 }
 
 @layer base {
+  :root {
+    --bg-primary: #fdfdfd;
+    --bg-secondary: #ffffff;
+    --text-primary: #171717;
+    --text-secondary: #525252;
+    --border-primary: #e5e5e5;
+  }
+
+  .dark {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #121212;
+    --text-primary: #f5f5f5;
+    --text-secondary: #a3a3a3;
+    --border-primary: #262626;
+  }
+
   body {
-    @apply font-sans antialiased dark:bg-neutral-950 bg-neutral-50 dark:text-neutral-100 text-neutral-900 transition-colors duration-300;
+    @apply font-sans antialiased bg-bg-primary text-text-primary transition-colors duration-500;
   }
 }
 

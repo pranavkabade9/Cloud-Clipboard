@@ -24,6 +24,8 @@ import imageCompression from 'browser-image-compression';
 import { cn } from '../../utils/utils';
 import DrawingCanvas from '../drawing/DrawingCanvas';
 
+import { handleImageUpload } from '../../services/uploadService';
+
 const ClipboardInput = () => {
   const { user, isGuest, userProfile, storageLimit, addUploadingItem, removeUploadingItem } = useStore();
   const [content, setContent] = useState('');
@@ -91,58 +93,14 @@ const ClipboardInput = () => {
   };
 
   const handleImageFile = async (file: File, skipCompression = false) => {
-    if (!file.type.startsWith('image/')) {
-        toast.error("Only images are supported");
-        return;
-    }
-
-    setIsUploading(true);
-    const tempId = crypto.randomUUID();
-    const loadingToast = toast.loading("Processing...");
-    
-    addUploadingItem({ id: tempId, type: 'image' });
-
-    try {
-      let finalFile = file;
-      if (!skipCompression) {
-        const options = {
-          maxSizeMB: 0.8,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-        };
-        finalFile = await imageCompression(file, options);
-      }
-
-      let imageUrl = '';
-      if (user) {
-        const storageRef = ref(storage, `clips/${user.uid}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`);
-        const snapshot = await uploadBytes(storageRef, finalFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
-      } else {
-        const reader = new FileReader();
-        imageUrl = await new Promise((resolve, reject) => {
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.onerror = (e) => reject(new Error("File read failed"));
-          reader.readAsDataURL(finalFile);
-        });
-      }
-
-      await saveToClipboard({ 
-        type: 'image', 
-        imageUrl, 
-        size: finalFile.size 
-      });
-
-      toast.dismiss(loadingToast);
-      toast.success("Snippet saved successfully");
-    } catch (error) {
-      console.error(error);
-      toast.dismiss(loadingToast);
-      toast.error("Failed to save image");
-    } finally {
-      removeUploadingItem(tempId);
-      setIsUploading(false);
-    }
+    await handleImageUpload({
+      file,
+      userId: user?.uid,
+      isGuest,
+      skipCompression,
+      onSuccess: () => setIsUploading(false),
+      onError: () => setIsUploading(false)
+    });
   };
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -188,7 +146,7 @@ const ClipboardInput = () => {
       <motion.div 
         layout
         className={cn(
-          "w-full dark:bg-neutral-900 bg-white border dark:border-white/5 border-neutral-200 rounded-[28px] overflow-hidden transition-all duration-300 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:shadow-none",
+          "w-full bg-bg-secondary border border-border-primary rounded-[28px] overflow-hidden transition-all duration-300 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)]",
           isExpanded ? "ring-4 ring-blue-500/10 border-blue-500/30" : "hover:border-neutral-300 dark:hover:border-neutral-700",
           isDragging && "ring-4 ring-blue-500/40 border-blue-500 bg-blue-500/5 backdrop-blur-sm"
         )}
