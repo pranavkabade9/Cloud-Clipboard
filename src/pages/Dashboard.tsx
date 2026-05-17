@@ -198,10 +198,7 @@ const Dashboard = () => {
 
   return (
     <div 
-      className={cn(
-        "flex h-screen overflow-hidden transition-colors duration-500 font-['Poppins'] select-none lg:select-text",
-        theme === 'dark' ? "bg-neutral-950 text-neutral-100" : "bg-neutral-50 text-neutral-900"
-      )}
+      className="flex h-screen overflow-hidden transition-colors duration-500 font-['Poppins'] select-none lg:select-text bg-bg-primary text-text-primary"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -246,7 +243,7 @@ const Dashboard = () => {
                   activeFilter === 'images' ? 'Media Gallery' :
                   activeFilter === 'bin' ? 'Cleanup required' : 'Collection'}
                 </span>
-                <h1 className="text-3xl lg:text-4xl font-black dark:text-white text-neutral-900 tracking-tight capitalize">
+                <h1 className="text-3xl lg:text-4xl font-black text-text-primary tracking-tight capitalize">
                   {activeFilter === 'all' ? 'Everything' : activeFilter}
                 </h1>
               </div>

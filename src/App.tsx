@@ -28,8 +28,7 @@ export default function App() {
   if (!authInitialized) {
     return (
       <div className={cn(
-        "min-h-screen flex items-center justify-center",
-        theme === 'dark' ? "bg-neutral-950" : "bg-neutral-50"
+        "min-h-screen flex items-center justify-center bg-bg-primary"
       )}>
         <div className="relative">
           <div className="h-20 w-20 rounded-[24px] bg-blue-500 flex items-center justify-center animate-pulse shadow-2xl shadow-blue-500/20">
@@ -41,17 +40,14 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-300 ${theme === 'dark' ? 'bg-neutral-950 text-neutral-100' : 'bg-neutral-50 text-neutral-900'}`}>
+    <div className="min-h-screen font-sans transition-colors duration-300 bg-bg-primary text-text-primary">
       {(user || isGuest) ? <Dashboard /> : <LandingPage />}
       <Toaster 
         theme={theme}
         position="bottom-center"
         toastOptions={{
           className: cn(
-            'rounded-2xl shadow-2xl border font-sans',
-            theme === 'dark' 
-              ? 'bg-neutral-900 border-neutral-800 text-neutral-100' 
-              : 'bg-white border-neutral-200 text-neutral-900'
+            'rounded-2xl shadow-2xl border font-sans bg-bg-secondary border-border-primary text-text-primary'
           ),
         }}
       />

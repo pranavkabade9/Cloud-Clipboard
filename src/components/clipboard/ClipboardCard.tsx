@@ -327,7 +327,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               <div className="h-12 w-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/40">
                 <Check className="h-6 w-6 text-white" />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600 dark:text-green-400 bg-white/80 dark:bg-black/80 px-3 py-1 rounded-full backdrop-blur-md">Copied to Vault</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600 dark:text-green-400 bg-bg-secondary/80 px-3 py-1 rounded-full backdrop-blur-md">Copied to Vault</span>
             </div>
           </motion.div>
         )}
@@ -470,10 +470,10 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] flex items-center justify-center p-4 lg:p-12 bg-neutral-950/98 backdrop-blur-3xl"
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4 lg:p-12 bg-bg-primary/95 backdrop-blur-3xl"
             onClick={() => setIsExpanded(false)}
           >
-             <button className="absolute top-6 right-6 lg:top-8 lg:right-8 p-3 lg:p-4 rounded-full bg-white/5 text-white hover:bg-white/20 transition-all border border-white/10 scale-100 hover:scale-110">
+             <button className="absolute top-6 right-6 lg:top-8 lg:right-8 p-3 lg:p-4 rounded-full bg-bg-secondary/50 text-text-primary hover:bg-bg-secondary transition-all border border-border-primary scale-100 hover:scale-110">
                 <X className="h-6 w-6 lg:h-8 lg:w-8" />
              </button>
 
@@ -485,7 +485,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               onClick={e => e.stopPropagation()}
              >
                 <div className={cn(
-                   "flex-1 bg-neutral-900 rounded-[32px] lg:rounded-[48px] border border-white/5 overflow-hidden shadow-2xl relative min-h-[400px] flex flex-col",
+                   "flex-1 bg-bg-secondary rounded-[32px] lg:rounded-[48px] border border-border-primary overflow-hidden shadow-2xl relative min-h-[400px] flex flex-col",
                    isEditing && "ring-2 ring-blue-500"
                  )}>
                   {item.type === 'image' ? (
@@ -497,11 +497,11 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                           autoFocus
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
-                          className="w-full flex-1 bg-transparent border-none focus:ring-0 text-white text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap resize-none no-scrollbar"
+                          className="w-full flex-1 bg-transparent border-none focus:ring-0 text-text-primary text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap resize-none no-scrollbar"
                           placeholder="Edit your clip..."
                         />
                       ) : (
-                        <div className="text-white text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap">
+                        <div className="text-text-primary text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap">
                           {item.content}
                         </div>
                       )}
@@ -514,7 +514,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                           onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)} 
                           className={cn(
                             "flex items-center gap-3 px-6 lg:px-10 py-3 lg:py-5 rounded-2xl lg:rounded-[24px] font-black text-xs lg:text-sm transition-all active:scale-95 shadow-2xl",
-                            isEditing ? "bg-green-500 hover:bg-green-600 text-white" : "bg-white/10 hover:bg-white/20 text-white backdrop-blur-xl border border-white/10"
+                            isEditing ? "bg-green-500 hover:bg-green-600 text-white" : "bg-bg-primary/50 hover:bg-bg-primary text-text-primary backdrop-blur-xl border border-border-primary"
                           )}
                         >
                            {isEditing ? <Check className="h-4 lg:h-5 lg:w-5" /> : <Pencil className="h-4 lg:h-5 lg:w-5" />}
@@ -533,12 +533,12 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
 
                 <div className="w-full lg:w-96 flex flex-col gap-6 lg:gap-8 pb-8 lg:pb-0">
                    <div className="space-y-2">
-                      <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tight">Snippet Insights</h2>
-                      <p className="text-neutral-500 font-bold uppercase tracking-widest text-[10px]">Captured {relativeTime}</p>
+                      <h2 className="text-2xl lg:text-3xl font-black text-text-primary tracking-tight">Snippet Insights</h2>
+                      <p className="text-text-muted font-bold uppercase tracking-widest text-[10px]">Captured {relativeTime}</p>
                    </div>
 
                    <div className="space-y-4">
-                      <div className="p-6 rounded-[28px] bg-white/5 border border-white/10 space-y-4 shadow-xl">
+                      <div className="p-6 rounded-[28px] bg-bg-primary border border-border-primary space-y-4 shadow-xl">
                          <div className="flex items-center justify-between text-neutral-400">
                             <span className="text-[10px] font-black uppercase tracking-widest">Digital Weight</span>
                             <span className="text-sm font-black text-white">{formatBytes(item.size || 0)}</span>
@@ -553,7 +553,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                    <div className="mt-auto space-y-3 lg:space-y-4">
                       {!item.deleted ? (
                         <>
-                          <button onClick={handleDownload} className="w-full flex items-center justify-center gap-3 py-5 rounded-[24px] bg-white/10 hover:bg-white text-white hover:text-black font-black text-xs transition-all hover:scale-[1.02] border border-white/5">
+                          <button onClick={handleDownload} className="w-full flex items-center justify-center gap-3 py-5 rounded-[24px] bg-bg-primary border border-border-primary text-text-primary hover:bg-text-primary hover:text-bg-primary font-black text-xs transition-all hover:scale-[1.02]">
                             <Download className="h-5 w-5" />
                             Download Original
                           </button>

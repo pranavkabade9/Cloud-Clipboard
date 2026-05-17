@@ -61,7 +61,7 @@ const ClipboardGrid = () => {
         className="flex flex-col items-center justify-center py-32 space-y-6"
       >
         <div className="relative">
-           <div className="h-24 w-24 rounded-[32px] bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-300 dark:text-neutral-700">
+           <div className="h-24 w-24 rounded-[32px] bg-bg-secondary border border-border-primary flex items-center justify-center text-text-muted">
              <Inbox className="h-10 w-10" />
            </div>
            <div className="absolute -bottom-2 -right-2 h-10 w-10 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -69,8 +69,8 @@ const ClipboardGrid = () => {
            </div>
         </div>
         <div className="text-center">
-          <h3 className="text-xl font-bold dark:text-white text-neutral-900 tracking-tight">Vault is empty</h3>
-          <p className="text-sm font-medium text-neutral-500 max-w-xs mx-auto mt-2 leading-relaxed">
+          <h3 className="text-xl font-bold text-text-primary tracking-tight">Vault is empty</h3>
+          <p className="text-sm font-medium text-text-muted max-w-xs mx-auto mt-2 leading-relaxed">
             Start saving your digital fragments to see them beautifully organized here.
           </p>
         </div>
@@ -86,8 +86,8 @@ const ClipboardGrid = () => {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20">
                 <Star className="h-3.5 w-3.5 fill-current" />
               </div>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">Pinned</h2>
-              <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800/50" />
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Pinned</h2>
+              <div className="flex-1 h-px bg-border-primary/50" />
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,7 +114,7 @@ const ClipboardGrid = () => {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20">
                 <Clock className="h-3.5 w-3.5" />
               </div>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">
                 {activeFilter === 'bin' ? 'Bin Items' : 'Recently Saved'}
               </h2>
               {activeFilter === 'bin' && recentItems.length > 0 && (
@@ -172,7 +172,7 @@ const ClipboardGrid = () => {
                   Vacuum Bin
                 </button>
               )}
-              <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800/50" />
+              <div className="flex-1 h-px bg-border-primary/50" />
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

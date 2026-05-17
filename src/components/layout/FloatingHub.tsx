@@ -195,10 +195,7 @@ const FloatingHub = () => {
               initial={{ opacity: 0, scale: 0.9, y: 10, x: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 10, x: 10 }}
-              className={cn(
-                "absolute bottom-20 right-0 w-64 rounded-[32px] border border-border-primary p-4 shadow-2xl backdrop-blur-3xl overflow-hidden",
-                theme === 'dark' ? "bg-neutral-900/90" : "bg-white/90"
-              )}
+              className="absolute bottom-20 right-0 w-64 rounded-[32px] border border-border-primary p-4 shadow-2xl backdrop-blur-3xl overflow-hidden bg-bg-secondary/90"
             >
               <div className="flex flex-col gap-1">
                 <div className="px-3 py-2 mb-2 border-b border-border-primary/50">

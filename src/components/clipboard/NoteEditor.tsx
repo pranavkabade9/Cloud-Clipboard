@@ -57,7 +57,7 @@ const NoteEditor = ({ isOpen, onClose, onSave, initialContent = '', noteId }: No
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 20 }}
       className={cn(
-        "fixed z-[100] dark:bg-neutral-900 bg-white border border-border-primary shadow-2xl transition-all duration-500 font-['Poppins']",
+        "fixed z-[100] bg-bg-secondary border border-border-primary shadow-2xl transition-all duration-500 font-['Poppins']",
         isMaximized 
           ? "inset-4 rounded-[40px]" 
           : "bottom-8 right-8 w-full max-w-2xl h-[600px] rounded-[32px]"
@@ -69,7 +69,7 @@ const NoteEditor = ({ isOpen, onClose, onSave, initialContent = '', noteId }: No
           <div className="flex items-center gap-4">
             <button 
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-text-secondary transition-all"
+              className="p-2 rounded-xl hover:bg-bg-primary text-text-secondary transition-all"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -87,7 +87,7 @@ const NoteEditor = ({ isOpen, onClose, onSave, initialContent = '', noteId }: No
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsMaximized(!isMaximized)}
-              className="p-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-text-secondary transition-all"
+              className="p-2.5 rounded-xl hover:bg-bg-primary text-text-secondary transition-all"
             >
               {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
@@ -102,22 +102,22 @@ const NoteEditor = ({ isOpen, onClose, onSave, initialContent = '', noteId }: No
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-1 p-3 px-6 border-b border-border-primary bg-neutral-50 dark:bg-white/[0.01]">
-           <button className="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/5 text-text-secondary transition-all">
+        <div className="flex items-center gap-1 p-3 px-6 border-b border-border-primary bg-bg-primary/30">
+           <button className="p-2 rounded-lg hover:bg-bg-primary text-text-secondary transition-all">
              <Bold className="h-4 w-4" />
            </button>
-           <button className="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/5 text-text-secondary transition-all">
+           <button className="p-2 rounded-lg hover:bg-bg-primary text-text-secondary transition-all">
              <Italic className="h-4 w-4" />
            </button>
            <div className="w-px h-4 bg-border-primary mx-2" />
-           <button className="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/5 text-text-secondary transition-all">
+           <button className="p-2 rounded-lg hover:bg-bg-primary text-text-secondary transition-all">
              <CheckSquare className="h-4 w-4" />
            </button>
-           <button className="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/5 text-text-secondary transition-all">
+           <button className="p-2 rounded-lg hover:bg-bg-primary text-text-secondary transition-all">
              <List className="h-4 w-4" />
            </button>
            <div className="w-px h-4 bg-border-primary mx-2" />
-           <button className="p-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/5 text-text-secondary transition-all">
+           <button className="p-2 rounded-lg hover:bg-bg-primary text-text-secondary transition-all">
              <Type className="h-4 w-4" />
            </button>
         </div>
@@ -128,13 +128,13 @@ const NoteEditor = ({ isOpen, onClose, onSave, initialContent = '', noteId }: No
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's on your mind? Start writing fragments..."
-            className="w-full h-full bg-transparent border-none focus:ring-0 resize-none text-text-primary text-lg font-medium placeholder-text-secondary/30 leading-relaxed custom-scrollbar"
+            className="w-full h-full bg-transparent border-none focus:ring-0 resize-none text-text-primary text-lg font-medium placeholder-text-muted/30 leading-relaxed custom-scrollbar"
             autoFocus
           />
         </div>
 
         {/* Footer */}
-        <div className="p-4 px-8 border-t border-border-primary bg-neutral-50 dark:bg-white/[0.01]">
+        <div className="p-4 px-8 border-t border-border-primary bg-bg-primary/30">
            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[3px] text-center">
              CloudClip Notes Engine V1
            </p>

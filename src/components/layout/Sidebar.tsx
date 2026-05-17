@@ -33,12 +33,12 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
       activeFilter === item.id && "scale-110"
     )} />
     
-    {!isOpen && (
-      <div className="absolute left-full ml-4 px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[100] shadow-xl border border-white/10">
-        {item.label}
-        <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-neutral-900" />
-      </div>
-    )}
+      {!isOpen && (
+        <div className="absolute left-full ml-4 px-3 py-1.5 rounded-lg bg-bg-secondary text-text-primary text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[100] shadow-xl border border-border-primary">
+          {item.label}
+          <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-border-primary" />
+        </div>
+      )}
 
     <AnimatePresence>
       {isOpen && (

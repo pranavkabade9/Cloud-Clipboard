@@ -72,14 +72,14 @@ const LandingPage = () => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay }}
-      className="group relative p-8 rounded-[32px] border dark:border-white/5 border-neutral-200 dark:bg-white/[0.02] bg-white shadow-xl shadow-neutral-200/50 dark:shadow-none hover:border-blue-500/50 transition-all duration-500 overflow-hidden"
+      className="group relative p-8 rounded-[32px] border border-border-primary bg-bg-secondary shadow-xl shadow-neutral-200/50 dark:shadow-none hover:border-blue-500/50 transition-all duration-500 overflow-hidden"
     >
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
       <div className="relative z-10">
         <div className="mb-6 inline-flex p-4 rounded-2xl bg-blue-500/10 text-blue-500 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
            <Icon className="h-6 w-6" />
         </div>
-        <h3 className="text-xl font-bold mb-2 dark:text-white text-neutral-900 tracking-tight">{title}</h3>
+        <h3 className="text-xl font-bold mb-2 text-text-primary tracking-tight">{title}</h3>
         <p className="text-text-secondary font-medium text-sm leading-relaxed">{desc}</p>
       </div>
     </motion.div>
@@ -93,13 +93,13 @@ const LandingPage = () => {
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Zap className="h-6 w-6 text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tighter dark:text-white text-neutral-900">CloudClip</span>
+          <span className="text-xl font-bold tracking-tighter text-text-primary">CloudClip</span>
         </div>
         
         <div className="flex items-center gap-4 pointer-events-auto">
           <button 
             onClick={toggleTheme}
-            className="p-3 rounded-full border dark:border-white/10 border-neutral-200 bg-white/50 dark:bg-black/50 backdrop-blur-xl dark:text-white text-neutral-900 hover:scale-110 transition-all shadow-lg"
+            className="p-3 rounded-full border border-border-primary bg-bg-secondary/50 backdrop-blur-xl text-text-primary hover:scale-110 transition-all shadow-lg"
           >
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
@@ -139,7 +139,7 @@ const LandingPage = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
-            className="text-6xl md:text-8xl lg:text-9xl font-extrabold dark:text-white text-neutral-900 tracking-tight leading-[0.95] mb-8"
+            className="text-6xl md:text-8xl lg:text-9xl font-extrabold text-text-primary tracking-tight leading-[0.95] mb-8"
           >
             Your Clipboard. <br />
             <span className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
@@ -174,7 +174,7 @@ const LandingPage = () => {
             </button>
             <button 
               onClick={handleGuestMode}
-              className="w-full sm:w-auto px-10 py-5 rounded-[24px] border dark:border-white/10 border-neutral-200 dark:bg-white/5 bg-white font-bold text-lg dark:text-white text-neutral-900 transition-all hover:bg-neutral-100 dark:hover:bg-white/10"
+              className="w-full sm:w-auto px-10 py-5 rounded-[24px] border border-border-primary bg-bg-secondary font-bold text-lg text-text-primary transition-all hover:bg-bg-primary"
             >
               Continue as Guest
             </button>
@@ -270,7 +270,7 @@ const LandingPage = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-32 bg-neutral-50 dark:bg-transparent">
+      <section id="features" className="py-32 bg-bg-primary">
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mb-20">
              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-500 mb-4 block">Modern Productivity</span>
@@ -330,8 +330,8 @@ const LandingPage = () => {
             {/* Left side: Cinematic content */}
             <div className="space-y-12">
                <div>
-                  <h2 className="text-5xl md:text-7xl font-extrabold dark:text-white text-neutral-900 mb-8 tracking-tighter leading-tight">Elevate <br /> your workflow.</h2>
-                  <p className="text-xl font-medium text-neutral-500 leading-relaxed max-w-lg">
+                  <h2 className="text-5xl md:text-7xl font-extrabold text-text-primary mb-8 tracking-tighter leading-tight">Elevate <br /> your workflow.</h2>
+                  <p className="text-xl font-medium text-text-secondary leading-relaxed max-w-lg">
                     Join thousands of designers, developers, and creators who use CloudClip to manage their digital fragments.
                   </p>
                </div>
@@ -349,7 +349,7 @@ const LandingPage = () => {
                       whileInView={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.1 }}
                     >
-                       <div className="h-10 w-10 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-blue-500 shadow-sm">
+                       <div className="h-10 w-10 rounded-xl bg-bg-secondary border border-border-primary flex items-center justify-center text-blue-500 shadow-sm">
                           <item.icon className="h-5 w-5" />
                        </div>
                        {item.text}
@@ -364,7 +364,7 @@ const LandingPage = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="w-full max-w-md rounded-[48px] border dark:border-white/5 border-neutral-200 dark:bg-white/[0.03] bg-white p-12 backdrop-blur-3xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] relative"
+                className="w-full max-w-md rounded-[48px] border border-border-primary bg-bg-secondary/40 p-12 backdrop-blur-3xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] relative"
                >
                   <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-blue-500/10 blur-[40px]" />
                   <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-purple-500/10 blur-[40px]" />
@@ -381,7 +381,7 @@ const LandingPage = () => {
                     <button 
                       onClick={handleGoogleSignIn}
                       disabled={isSigningIn}
-                      className="group flex w-full items-center justify-center gap-4 rounded-3xl border dark:border-white/10 border-neutral-200 dark:bg-white/5 bg-neutral-50 px-8 py-5 font-bold dark:text-white text-neutral-900 transition-all hover:bg-neutral-100 dark:hover:hover:bg-neutral-200 dark:hover:bg-white/10 hover:shadow-lg hover:shadow-blue-500/5 active:scale-[0.98] shadow-sm disabled:opacity-50"
+                      className="group flex w-full items-center justify-center gap-4 rounded-3xl border border-border-primary bg-bg-primary px-8 py-5 font-bold text-text-primary transition-all hover:bg-bg-secondary hover:shadow-lg hover:shadow-blue-500/5 active:scale-[0.98] shadow-sm disabled:opacity-50"
                     >
                       {isSigningIn ? (
                         <div className="h-5 w-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
@@ -392,20 +392,20 @@ const LandingPage = () => {
                     </button>
                     
                     <div className="relative my-10 flex items-center justify-center">
-                      <div className="h-[1px] w-full dark:bg-white/10 bg-neutral-200" />
-                      <span className="absolute dark:bg-[#0a0a0a] bg-white px-4 text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500">Secure Access</span>
+                      <div className="h-[1px] w-full bg-border-primary" />
+                      <span className="absolute bg-bg-secondary px-4 text-[10px] font-bold uppercase tracking-[0.3em] text-text-muted">Secure Access</span>
                     </div>
 
                     <button 
                       onClick={handleGuestMode}
-                      className="flex w-full items-center justify-center gap-4 rounded-3xl border dark:border-white/10 border-neutral-200 dark:bg-white/5 bg-neutral-50 px-8 py-5 font-bold text-neutral-500 transition-all hover:bg-neutral-100 dark:hover:bg-white/10 active:scale-[0.98] shadow-sm"
+                      className="flex w-full items-center justify-center gap-4 rounded-3xl border border-border-primary bg-bg-primary px-8 py-5 font-bold text-text-muted transition-all hover:bg-bg-secondary active:scale-[0.98] shadow-sm"
                     >
                       <UserCircle2 className="h-6 w-6" />
                       Continue as Guest
                     </button>
                   </div>
 
-                  <p className="mt-10 text-center text-[10px] font-semibold text-neutral-500 uppercase tracking-widest leading-relaxed">
+                  <p className="mt-10 text-center text-[10px] font-semibold text-text-muted uppercase tracking-widest leading-relaxed">
                     No signup hidden costs. <br />
                     Just universal cloud sync.
                   </p>
@@ -415,19 +415,19 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-20 border-t dark:border-white/5 border-neutral-200">
+      <footer className="py-20 border-t border-border-primary">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
            <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-lg bg-blue-500 flex items-center justify-center">
                 <Zap className="h-5 w-5 text-white" />
               </div>
-              <span className="text-lg font-bold tracking-tighter dark:text-white text-neutral-900">CloudClip</span>
+              <span className="text-lg font-bold tracking-tighter text-text-primary">CloudClip</span>
            </div>
-           <p className="text-sm font-medium text-neutral-500">© 2026 CloudClip Studios. Vault Clipboard SaaS.</p>
+           <p className="text-sm font-medium text-text-muted">© 2026 CloudClip Studios. Vault Clipboard SaaS.</p>
            <div className="flex items-center gap-8">
-              <button className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-blue-500 transition-colors">Privacy</button>
-              <button className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-blue-500 transition-colors">Terms</button>
-              <button className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-blue-500 transition-colors">Support</button>
+              <button className="text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-blue-500 transition-colors">Privacy</button>
+              <button className="text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-blue-500 transition-colors">Terms</button>
+              <button className="text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-blue-500 transition-colors">Support</button>
            </div>
         </div>
       </footer>
