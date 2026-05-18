@@ -36,6 +36,21 @@ const ClipboardInput = () => {
   const [initialDrawingImage, setInitialDrawingImage] = useState<string | undefined>(undefined);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        if (!content.trim()) {
+           setIsExpanded(false);
+        }
+      }
+    };
+    if (isExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isExpanded, content]);
 
   const saveToClipboard = async (data: any) => {
     const itemSize = data.type === 'text' ? new Blob([data.content]).size : data.size || 0;
@@ -131,6 +146,10 @@ const ClipboardInput = () => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         if (content.trim()) handleTextSubmit();
       }
+      if (e.key === 'Escape') {
+        setIsExpanded(false);
+        setIsDrawingOpen(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -138,6 +157,7 @@ const ClipboardInput = () => {
 
   return (
     <div 
+      ref={containerRef}
       className="w-full max-w-2xl relative font-['Poppins']"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}

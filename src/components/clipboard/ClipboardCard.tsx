@@ -16,11 +16,9 @@ import {
   Star,
   RefreshCcw,
   RotateCcw,
-  Copy,
-  Bell
+  Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
-import ReminderModal from '../reminders/ReminderModal';
 import { 
   doc, 
   deleteDoc, 
@@ -44,48 +42,26 @@ interface ClipboardCardProps {
 }
 
 const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
-  const { user, isGuest, labels, isMobile } = useStore();
+  const { user, isGuest, labels, isMobile, setUndoAction } = useStore();
   const [isCopied, setIsCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [editContent, setEditContent] = useState(item.content || '');
 
-  const handleReminderSave = useCallback(async (date: Date) => {
-    const reminderTime = date.toISOString();
+  const performUpdate = useCallback(async (updateData: any) => {
     if (user) {
       try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), { reminder: reminderTime });
-        toast.success("Reminder set");
+        await updateDoc(doc(db, 'clipboardItems', item.id), updateData);
       } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
       }
     } else if (isGuest) {
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, reminder: reminderTime } : i);
+      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, ...updateData } : i);
       localStorage.setItem('guest_clipboard', JSON.stringify(updated));
       useStore.getState().setClipboardItems(updated);
-      toast.success("Reminder set locally");
-    }
-  }, [item.id, user, isGuest]);
-
-  const handleRemoveReminder = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (user) {
-      try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), { reminder: null });
-        toast.success("Reminder removed");
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
-      }
-    } else if (isGuest) {
-      const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, reminder: null } : i);
-      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-      useStore.getState().setClipboardItems(updated);
-      toast.success("Reminder removed");
     }
   }, [item.id, user, isGuest]);
   const [relativeTime, setRelativeTime] = useState(getRelativeTime(new Date(item.createdAt?.seconds * 1000 || item.createdAt)));
@@ -157,39 +133,31 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   const handleArchive = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     const newArchived = !item.archived;
-    if (user) {
-      try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), { archived: newArchived });
-        toast.success(newArchived ? "Archived" : "Restored from archive");
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
-      }
-    } else if (isGuest) {
-      const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, archived: newArchived } : i);
-      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-      useStore.getState().setClipboardItems(updated);
-      toast.success(newArchived ? "Archived" : "Restored");
-    }
-  }, [item.id, item.archived, user, isGuest]);
+    await performUpdate({ archived: newArchived });
+    
+    setUndoAction({
+      message: newArchived ? "Snippet archived" : "Snippet restored",
+      action: () => performUpdate({ archived: !newArchived }),
+      id: `archive-${item.id}`
+    });
+  }, [item.id, item.archived, performUpdate, setUndoAction]);
 
   const handleRestore = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (user) {
-      try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), { deleted: false, archived: false });
-        toast.success("Item restored");
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
-      }
-    } else if (isGuest) {
-      const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
-      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, deleted: false, archived: false } : i);
-      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-      useStore.getState().setClipboardItems(updated);
-      toast.success("Restored");
-    }
-  }, [item.id, user, isGuest]);
+    await performUpdate({ deleted: false, archived: false });
+    toast.success("Snippet restored");
+  }, [performUpdate]);
+
+  const startDelete = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await performUpdate({ deleted: true });
+    
+    setUndoAction({
+      message: "Moved to bin",
+      action: () => performUpdate({ deleted: false }),
+      id: `delete-${item.id}`
+    });
+  }, [item.id, performUpdate, setUndoAction]);
 
   const handlePermanentDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -216,44 +184,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
       toast.success("Permanently removed");
     }
   }, [item.id, item.size, user, isGuest]);
-
-  const startDelete = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    const originalState = { deleted: !!item.deleted, archived: !!item.archived };
-    
-  const performSoftDelete = async (shouldDelete: boolean) => {
-    // Optimistic update for both guest and user
-    const currentItems = useStore.getState().clipboardItems;
-    const updated = currentItems.map((i: any) => i.id === item.id ? { ...i, deleted: shouldDelete } : i);
-    useStore.getState().setClipboardItems(updated);
-
-    if (user) {
-      try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), { deleted: shouldDelete });
-      } catch (error) {
-        // Rollback on error
-        useStore.getState().setClipboardItems(currentItems);
-        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
-      }
-    } else if (isGuest) {
-      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
-    }
-  };
-
-    try {
-      await performSoftDelete(true);
-      toast.success("Moved to Bin", {
-        action: {
-          label: "Undo",
-          onClick: () => performSoftDelete(false)
-        },
-        duration: 5000
-      });
-    } catch (error) {
-      toast.error("Failed to delete");
-    }
-  }, [item.id, user, isGuest]);
 
   const handleDownload = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -359,19 +289,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                     <Maximize2 className="h-3.5 w-3.5" />
                   </button>
                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsReminderModalOpen(true);
-                    }} 
-                    className={cn(
-                      "p-2 rounded-lg transition-all",
-                      item.reminder ? "text-blue-500 bg-blue-500/10" : "text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary"
-                    )}
-                    title="Set Reminder"
-                  >
-                    <Bell className={cn("h-3.5 w-3.5", item.reminder && "fill-current")} />
-                  </button>
-                  <button 
                     onClick={handleArchive} 
                     className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
                     title="Archive"
@@ -434,15 +351,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               <Clock className="h-3 w-3" />
               {relativeTime}
            </div>
-           {item.reminder && (
-             <div 
-               onClick={handleRemoveReminder}
-               className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 text-blue-500 text-[8px] font-black uppercase cursor-pointer hover:bg-blue-500 hover:text-white transition-all scale-90 sm:scale-100 border border-blue-500/20"
-             >
-               <Bell className="h-2.5 w-2.5 fill-current" />
-               {new Date(item.reminder).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-             </div>
-           )}
            <div className="text-[8px] font-bold text-text-muted opacity-40 ml-auto uppercase tracking-tighter">
              {formatBytes(item.size || 0)}
            </div>
@@ -585,12 +493,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
         )}
       </AnimatePresence>
 
-      <ReminderModal 
-        isOpen={isReminderModalOpen}
-        onClose={() => setIsReminderModalOpen(false)}
-        onSave={handleReminderSave}
-        initialDate={item.reminder}
-      />
     </motion.div>
   );
 });

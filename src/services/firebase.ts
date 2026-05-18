@@ -22,7 +22,8 @@ import {
   deleteDoc,
   serverTimestamp,
   increment,
-  writeBatch
+  writeBatch,
+  getDocFromServer
 } from 'firebase/firestore';
 import { 
   getStorage, 
@@ -84,6 +85,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   }
+  
+  if (errInfo.error.includes('the client is offline')) {
+    console.warn('Firestore is offline, using cache where available');
+    return; // Don't throw for offline errors to avoid crashing major flows
+  }
+  
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+

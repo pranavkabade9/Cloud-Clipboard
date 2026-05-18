@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   RotateCw,
   Search, 
@@ -17,7 +17,8 @@ import {
   Star,
   Zap,
   Image as ImageIcon,
-  StickyNote
+  StickyNote,
+  Sparkles
 } from 'lucide-react';
 import { signOut } from '../../services/auth';
 import { useStore } from '../../store/useStore';
@@ -56,7 +57,19 @@ const Navbar = () => {
     "Search everything...",
     "Paste or search instantly..."
   ];
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -64,6 +77,15 @@ const Navbar = () => {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery) return [];
+    const query = searchQuery.toLowerCase();
+    return clipboardItems.filter(item => 
+      item.content?.toLowerCase().includes(query) || 
+      item.type.toLowerCase().includes(query)
+    ).slice(0, 5);
+  }, [searchQuery, clipboardItems]);
 
   const recentItems = clipboardItems.slice(0, 4);
   const pinnedItems = clipboardItems.filter(i => i.pinned).slice(0, 2);
@@ -106,6 +128,7 @@ const Navbar = () => {
             )} />
           </div>
           <input 
+            ref={searchInputRef}
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -128,7 +151,40 @@ const Navbar = () => {
               className="absolute top-full left-0 right-0 mt-2 p-4 rounded-[32px] border border-border-primary bg-bg-secondary shadow-2xl backdrop-blur-3xl z-[100] max-h-[480px] overflow-y-auto custom-scrollbar"
             >
               <div className="space-y-6">
-                {pinnedItems.length > 0 && (
+                {searchQuery && searchResults.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 px-2 mb-3">
+                      <Sparkles className="h-3 w-3 text-blue-500" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Smart Suggestions</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                       {searchResults.map(item => (
+                         <button 
+                           key={item.id}
+                           onClick={() => {
+                             setSearchQuery(item.content || '');
+                             setIsSearchFocused(false);
+                           }}
+                           className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:bg-bg-secondary border border-transparent hover:border-border-primary transition-all text-left group"
+                         >
+                            <div className={cn(
+                              "h-8 w-8 rounded-lg flex items-center justify-center transition-colors",
+                              item.type === 'image' ? "bg-purple-500/10 text-purple-500 group-hover:bg-purple-500" : "bg-blue-500/10 text-blue-500 group-hover:bg-blue-500",
+                              "group-hover:text-white"
+                            )}>
+                               {item.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <StickyNote className="h-4 w-4" />}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-text-primary line-clamp-1">{item.content || 'Stored Media'}</span>
+                              <span className="text-[8px] font-bold text-text-muted uppercase tracking-wider">{item.type}</span>
+                            </div>
+                         </button>
+                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {!searchQuery && pinnedItems.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 px-2 mb-3">
                       <Star className="h-3 w-3 text-orange-500 fill-current" />

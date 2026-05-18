@@ -19,7 +19,7 @@ import { signOut } from '../../services/auth';
 import { formatBytes, cn } from '../../utils/utils';
 import { toast } from 'sonner';
 import { db, handleFirestoreError, OperationType, auth } from '../../services/firebase';
-import { collection, query, where, getDocs, deleteDoc, doc, writeBatch, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, writeBatch, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 interface SettingsDropdownProps {
   isOpen: boolean;
@@ -32,17 +32,20 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
     userProfile, 
     theme, 
     storageLimit, 
-    animationsEnabled, 
-    setAnimationsEnabled,
+    isGuest,
+    isManageDataOpen,
+    setIsManageDataOpen,
     clipboardItems,
-    isGuest
+    setClipboardItems,
+    toggleTheme
   } = useStore();
 
   const storageUsed = userProfile?.storageUsed || 0;
   const storagePercentage = (storageUsed / storageLimit) * 100;
 
   const handleClearClipboard = async () => {
-    if (!confirm("Are you sure you want to clear your entire clipboard? This cannot be undone.")) return;
+    const message = "Are you sure you want to clear your entire clipboard? This cannot be undone. All snippets, images, and notes will be permanently deleted.";
+    if (!confirm(message)) return;
     
     if (user) {
       try {
@@ -63,140 +66,70 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
       }
     } else {
       localStorage.removeItem('guest_clipboard');
-      useStore.getState().setClipboardItems([]);
+      setClipboardItems([]);
       toast.success("Guest clipboard cleared");
     }
   };
 
-  const menuSections = [
-    {
-      title: "GENERAL",
-      items: [
-        {
-          icon: Moon,
-          label: "Appearance",
-          desc: theme === 'dark' ? "Dark mode" : "Light mode",
-          onClick: useStore.getState().toggleTheme,
-        },
-        {
-          icon: Gamepad2,
-          label: "Animations",
-          desc: animationsEnabled ? "Enabled" : "Disabled",
-          onClick: () => setAnimationsEnabled(!animationsEnabled),
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clipboardItems));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `vault_export_${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    toast.success("Data exported successfully");
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (re) => {
+        try {
+          const imported = JSON.parse(re.target?.result as string);
+          if (!Array.isArray(imported)) throw new Error("Invalid format");
+          
+          if (user) {
+            const batch = writeBatch(db);
+            let totalImportSize = 0;
+            imported.forEach(item => {
+              const newRef = doc(collection(db, 'clipboardItems'));
+              const { id, ...rest } = item;
+              totalImportSize += item.size || 0;
+              batch.set(newRef, { 
+                ...rest, 
+                userId: user.uid, 
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              });
+            });
+
+            await updateDoc(doc(db, 'users', user.uid), {
+              storageUsed: (userProfile?.storageUsed || 0) + totalImportSize
+            });
+
+            await batch.commit();
+            toast.success(`Imported ${imported.length} items`);
+          } else if (isGuest) {
+            const current = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+            const updated = [...current, ...imported];
+            localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+            setClipboardItems(updated);
+            toast.success(`Imported ${imported.length} items locally`);
+          }
+        } catch (err) { 
+          toast.error("Invalid format or corrupted file"); 
         }
-      ]
-    },
-    {
-      title: "STORAGE",
-      items: [
-        {
-          custom: (
-            <div className="space-y-3 py-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-bg-primary border border-border-primary/50 flex items-center justify-center text-text-muted">
-                    <Database className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-text-primary">Cloud Usage</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-text-muted">
-                  {formatBytes(storageUsed)} / {formatBytes(storageLimit)}
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-border-primary overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(storagePercentage, 100)}%` }}
-                  className="h-full bg-blue-500 transition-all duration-700"
-                />
-              </div>
-            </div>
-          )
-        }
-      ]
-    },
-    {
-      title: "CLIPBOARD",
-      items: [
-        {
-          icon: Upload,
-          label: "Import Data",
-          desc: "Upload JSON backup",
-          onClick: () => {
-             const input = document.createElement('input');
-             input.type = 'file';
-             input.accept = 'application/json';
-             input.onchange = async (e) => {
-               const file = (e.target as HTMLInputElement).files?.[0];
-               if (!file) return;
-               const reader = new FileReader();
-               reader.onload = async (re) => {
-                 try {
-                   const imported = JSON.parse(re.target?.result as string);
-                   if (!Array.isArray(imported)) throw new Error();
-                   if (user) {
-                     const batch = writeBatch(db);
-                     imported.forEach(item => {
-                       const newRef = doc(collection(db, 'clipboardItems'));
-                       const { id, ...rest } = item;
-                       batch.set(newRef, { ...rest, userId: user.uid, createdAt: serverTimestamp() });
-                     });
-                     await batch.commit();
-                     toast.success(`Imported ${imported.length} items`);
-                   }
-                 } catch (err) { toast.error("Invalid format"); }
-               };
-               reader.readAsText(file);
-             };
-             input.click();
-          },
-        },
-        {
-          icon: Trash2,
-          label: "Clear Clipboard",
-          desc: "Delete all items",
-          onClick: handleClearClipboard,
-          danger: true,
-        },
-        {
-          icon: Download,
-          label: "Export Data",
-          desc: "Download as JSON",
-          onClick: () => {
-             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clipboardItems));
-             const downloadAnchorNode = document.createElement('a');
-             downloadAnchorNode.setAttribute("href", dataStr);
-             downloadAnchorNode.setAttribute("download", `vault_export.json`);
-             downloadAnchorNode.click();
-             downloadAnchorNode.remove();
-          },
-        }
-      ]
-    },
-    {
-      title: "ACCOUNT",
-      items: [
-        {
-          icon: LogOut,
-          label: "Sign Out",
-          desc: isGuest ? "Logout of local session" : "Logout of account",
-          onClick: () => {
-            if (isGuest) useStore.getState().setIsGuest(false);
-            else signOut();
-            onClose();
-          },
-        }
-      ]
-    },
-    {
-      title: "SUPPORT",
-      items: [
-        { icon: HelpCircle, label: "Help Center", desc: "Coming soon!", onClick: () => {} },
-      ]
-    }
-  ];
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
 
   return (
     <AnimatePresence>
@@ -206,7 +139,10 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              setIsManageDataOpen(false);
+            }}
             className="fixed inset-0 z-[100]"
           />
           
@@ -217,47 +153,150 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
             className="absolute top-full right-0 mt-4 w-[340px] max-h-[80vh] overflow-y-auto rounded-[32px] border border-border-primary bg-bg-secondary shadow-2xl backdrop-blur-3xl z-[110] p-6 custom-scrollbar font-['Poppins']"
           >
             <div className="space-y-8">
-              {menuSections.map((section, idx) => (
-                <div key={idx} className="space-y-4">
-                  <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] px-2 outline-none">
-                    {section.title}
-                  </h3>
-                  
-                  <div className="space-y-1">
-                    {section.items.map((item: any, i) => (
-                      item.custom ? (
-                        <div key={i} className="px-2">{item.custom}</div>
-                      ) : (
-                        <button
-                          key={i}
-                          onClick={item.onClick}
-                          className="w-full flex items-center gap-4 p-2 rounded-2xl transition-all hover:bg-bg-primary group text-left outline-none"
-                        >
-                          <div className={cn(
-                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-primary border border-border-primary/50 transition-all",
-                            item.danger ? "text-red-500 bg-red-500/5 group-hover:bg-red-500/10" : "text-text-secondary group-hover:text-blue-500 group-hover:bg-blue-500/10 group-hover:border-blue-500/20"
-                          )}>
-                            {item.icon && <item.icon className="h-5 w-5" />}
+              {!isManageDataOpen ? (
+                <>
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] px-2">Account</h3>
+                    <div className="flex items-center gap-4 px-2 py-1">
+                      <div className="h-12 w-12 rounded-2xl bg-bg-primary border border-border-primary/50 flex items-center justify-center text-text-muted overflow-hidden">
+                        {user?.photoURL ? (
+                          <img src={user.photoURL} className="w-full h-full object-cover" alt="User" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-blue-500/10 text-blue-500">
+                             <Database className="h-6 w-6" />
                           </div>
-                          <div>
-                            <p className={cn(
-                                "text-sm font-bold tracking-tight",
-                                item.danger ? "text-red-500" : "text-text-primary"
-                            )}>
-                                {item.label}
-                            </p>
-                            {item.desc && (
-                              <p className="text-[10px] font-bold text-text-muted leading-none mt-0.5">
-                                {item.desc}
-                              </p>
-                            )}
-                          </div>
-                        </button>
-                      )
-                    ))}
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="text-sm font-black text-text-primary">{user?.displayName || "Guest User"}</p>
+                        <p className="text-[10px] font-bold text-text-muted truncate max-w-[180px]">{user?.email || "Local storage session"}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] px-2">Appearance</h3>
+                    <button
+                      onClick={toggleTheme}
+                      className="w-full flex items-center gap-4 p-2 rounded-2xl transition-all hover:bg-bg-primary group text-left"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-primary border border-border-primary/50 text-text-secondary group-hover:text-blue-500 group-hover:bg-blue-500/10 transition-all">
+                        {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold tracking-tight text-text-primary">Theme</p>
+                        <p className="text-[10px] font-bold text-text-muted">{theme === 'dark' ? "Dark Mode" : "Light Mode"}</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] px-2">Vault Size</h3>
+                    <div className="px-2 space-y-3">
+                      <div className="flex items-center justify-between">
+                         <span className="text-[10px] font-black text-text-muted uppercase">Digital Weight</span>
+                         <span className="text-sm font-black text-text-primary">{formatBytes(storageUsed)}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-border-primary overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-blue-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(storagePercentage, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => setIsManageDataOpen(true)}
+                      className="w-full flex items-center gap-4 p-2 rounded-2xl transition-all hover:bg-bg-primary group text-left"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-primary border border-border-primary/50 text-text-secondary group-hover:text-blue-500 group-hover:bg-blue-500/10 transition-all">
+                        <Database className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold tracking-tight text-text-primary">Manage Clipboard Data</p>
+                        <p className="text-[10px] font-bold text-text-muted">Import, Export, Clear All</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        if (isGuest) useStore.getState().setIsGuest(false);
+                        else signOut();
+                        onClose();
+                      }}
+                      className="w-full flex items-center gap-4 p-2 rounded-2xl transition-all hover:bg-red-500/5 group text-left"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-primary border border-border-primary/50 text-text-secondary group-hover:text-red-500 group-hover:bg-red-500/10 transition-all">
+                        <LogOut className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold tracking-tight text-text-primary group-hover:text-red-500">Sign Out</p>
+                        <p className="text-[10px] font-bold text-text-muted">Exit session</p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <button 
+                      onClick={() => setIsManageDataOpen(false)}
+                      className="p-2 rounded-xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <h3 className="text-lg font-black text-text-primary tracking-tight">Manage Data</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleImport}
+                      className="w-full flex items-center gap-4 p-4 rounded-[24px] transition-all bg-bg-primary border border-border-primary hover:border-blue-500/30 group text-left"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-secondary border border-border-primary/50 text-text-secondary group-hover:text-blue-500 group-hover:bg-blue-500/10 transition-all">
+                        <Upload className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold tracking-tight text-text-primary">Import Backup</p>
+                        <p className="text-[10px] font-bold text-text-muted">Restore from JSON file</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={handleExport}
+                      className="w-full flex items-center gap-4 p-4 rounded-[24px] transition-all bg-bg-primary border border-border-primary hover:border-blue-500/30 group text-left"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bg-secondary border border-border-primary/50 text-text-secondary group-hover:text-blue-500 group-hover:bg-blue-500/10 transition-all">
+                        <Download className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold tracking-tight text-text-primary">Export Vault</p>
+                        <p className="text-[10px] font-bold text-text-muted">Download all data</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={handleClearClipboard}
+                      className="w-full flex items-center gap-4 p-4 rounded-[24px] transition-all bg-red-500/5 border border-red-500/10 hover:bg-red-500/10 group text-left mt-8"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-neutral-900 border border-red-500/20 text-red-500 transition-all">
+                        <Trash2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold tracking-tight text-red-500">Atomic Wipe</p>
+                        <p className="text-[10px] font-bold text-red-500/60 uppercase">Permanent Deletion</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  <p className="text-[9px] font-medium text-text-muted px-4 text-center mt-6 leading-relaxed">
+                    Data management is permanent. We recommend exporting your vault before performing an atomic wipe.
+                  </p>
+                </>
+              )}
             </div>
           </motion.div>
         </>

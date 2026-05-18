@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
 import MobileNav from '../components/layout/MobileNav';
-import FloatingHub from '../components/layout/FloatingHub';
 import ClipboardInput from '../components/clipboard/ClipboardInput';
 import ClipboardGrid from '../components/clipboard/ClipboardGrid';
 import NoteEditor from '../components/clipboard/NoteEditor';
@@ -14,7 +13,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { toast } from 'sonner';
 import { cn } from '../utils/utils';
-import { Upload, Cloud as CloudIcon, Plus, StickyNote, Clipboard } from 'lucide-react';
+import { Upload, Cloud as CloudIcon, Plus, StickyNote, Clipboard, Trash2, Archive, RotateCcw } from 'lucide-react';
 
 import { handleImageUpload } from '../services/uploadService';
 
@@ -36,6 +35,47 @@ const Dashboard = () => {
     setIsNoteEditorOpen
   } = useStore();
   const [isDragging, setIsDragging] = useState(false);
+
+  const pasteFromClipboard = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      let handled = false;
+      
+      for (const item of items) {
+        if (item.types.some(type => type.startsWith('image/'))) {
+          const type = item.types.find(t => t.startsWith('image/'));
+          if (type) {
+            const blob = await item.getType(type);
+            const file = new File([blob], 'pasted-image.png', { type });
+            handleImageFile(file);
+            handled = true;
+          }
+        } else if (item.types.includes('text/plain')) {
+          const blob = await item.getType('text/plain');
+          const text = await blob.text();
+          if (text.trim()) {
+            await saveToClipboard({ type: 'text', content: text.trim() });
+            handled = true;
+          }
+        }
+      }
+      
+      if (!handled) {
+        toast.error("Nothing found in clipboard to paste");
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+      toast.error("Clipboard access denied", {
+        description: "Please check your browser permissions."
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handlePasteGlobal = () => pasteFromClipboard();
+    window.addEventListener('clipboard-paste-global', handlePasteGlobal as any);
+    return () => window.removeEventListener('clipboard-paste-global', handlePasteGlobal as any);
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -238,7 +278,6 @@ const Dashboard = () => {
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">
                   {activeFilter === 'all' ? 'Unified Stream' : 
-                  activeFilter === 'reminders' ? 'Time Sensitive' :
                   activeFilter === 'notes' ? 'Text Collection' :
                   activeFilter === 'images' ? 'Media Gallery' :
                   activeFilter === 'bin' ? 'Cleanup required' : 'Collection'}
@@ -278,28 +317,23 @@ const Dashboard = () => {
 
             {activeFilter === 'all' && (
               <div className="flex flex-col items-center gap-6">
-                {isMobile && (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                        // Trigger the paste action - we can dispatch a custom event or use the store
-                        // For simplicity I'll call a shared utility or just implement it here
-                        // Better to use a store action if we had one, but let's just trigger paste
-                        const event = new CustomEvent('clipboard-paste-mobile');
-                        window.dispatchEvent(event);
-                    }}
-                    className="group relative flex items-center justify-center gap-3 w-full max-w-[280px] px-8 py-5 rounded-full bg-bg-secondary border border-blue-500/20 shadow-[0_12px_44px_rgba(59,130,246,0.15)] overflow-hidden transition-all hover:shadow-[0_12px_44px_rgba(59,130,246,0.3)] backdrop-blur-md"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                    
-                    <Clipboard className="h-5 w-5 text-blue-500 relative z-10" />
-                    <span className="text-sm font-black text-text-primary relative z-10 tracking-widest uppercase">Paste from Clipboard</span>
-                    
-                    {/* Subtle Glow */}
-                    <div className="absolute -right-4 -top-4 h-16 w-16 bg-blue-500/10 blur-[32px] rounded-full group-hover:bg-blue-500/20 transition-all" />
-                  </motion.button>
-                )}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                      const event = new CustomEvent('clipboard-paste-global');
+                      window.dispatchEvent(event);
+                  }}
+                  className="group relative flex items-center justify-center gap-3 w-full max-w-[280px] px-8 py-5 rounded-full bg-bg-secondary border border-blue-500/20 shadow-[0_12px_44px_rgba(59,130,246,0.15)] overflow-hidden transition-all hover:shadow-[0_12px_44px_rgba(59,130,246,0.3)] backdrop-blur-md"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                  
+                  <Clipboard className="h-5 w-5 text-blue-500 relative z-10" />
+                  <span className="text-sm font-black text-text-primary relative z-10 tracking-widest uppercase">Paste from Clipboard</span>
+                  
+                  {/* Subtle Glow */}
+                  <div className="absolute -right-4 -top-4 h-16 w-16 bg-blue-500/10 blur-[32px] rounded-full group-hover:bg-blue-500/20 transition-all" />
+                </motion.button>
                 <ClipboardInput onSave={saveToClipboard} />
               </div>
             )}
@@ -309,7 +343,6 @@ const Dashboard = () => {
         </div>
 
         {isMobile && <MobileNav />}
-        <FloatingHub />
 
         <AnimatePresence>
           {isDragging && (

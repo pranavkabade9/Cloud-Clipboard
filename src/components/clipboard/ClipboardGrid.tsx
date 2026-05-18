@@ -21,8 +21,6 @@ const ClipboardGrid = () => {
       items = items.filter(item => !item.archived && !item.deleted);
     } else if (activeFilter === 'notes') {
       items = items.filter(item => item.type === 'text' && !item.archived && !item.deleted);
-    } else if (activeFilter === 'reminders') {
-      items = items.filter(item => !!item.reminder && !item.deleted);
     } else if (activeFilter === 'images') {
       items = items.filter(item => item.type === 'image' && !item.archived && !item.deleted);
     } else if (activeFilter === 'pinned') {

@@ -18,7 +18,6 @@ const MobileNav = () => {
     { id: 'all', icon: LayoutGrid, label: 'Everything' },
     { id: 'notes', icon: StickyNote, label: 'Notes' },
     { id: 'images', icon: ImageIcon, label: 'Media' },
-    { id: 'reminders', icon: Bell, label: 'Soon' },
   ];
 
   return (

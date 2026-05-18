@@ -18,26 +18,38 @@ export const initAuth = () => {
     useStore.getState().setAuthInitialized(true);
     if (user) {
       useStore.getState().setIsGuest(false);
-      // Fetch user profile from Firestore
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      
-      if (userSnap.exists()) {
-        useStore.getState().setUserProfile({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          storageUsed: userSnap.data().storageUsed || 0,
-        });
-      } else {
-        // Create initial profile
-        const initialProfile = {
-          userId: user.uid,
-          storageUsed: 0,
-          updatedAt: serverTimestamp(),
-        };
-        await setDoc(userRef, initialProfile);
+      try {
+        // Fetch user profile from Firestore
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+          useStore.getState().setUserProfile({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            storageUsed: userSnap.data().storageUsed || 0,
+          });
+        } else {
+          // Create initial profile
+          const initialProfile = {
+            userId: user.uid,
+            storageUsed: 0,
+            updatedAt: serverTimestamp(),
+          };
+          await setDoc(userRef, initialProfile);
+          useStore.getState().setUserProfile({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            storageUsed: 0,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to sync profile", error);
+        // Set a basic profile if Firestore fails but user is authenticated
         useStore.getState().setUserProfile({
           uid: user.uid,
           email: user.email,

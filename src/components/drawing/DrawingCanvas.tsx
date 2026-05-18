@@ -56,6 +56,16 @@ const DrawingCanvas = ({ onSave, onClose, initialImage }: DrawingCanvasProps) =>
   const [tool, setTool] = useState<'pen' | 'pencil' | 'marker' | 'brush' | 'highlighter' | 'eraser' | 'select'>('pen');
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const colors = [
     '#000000', '#ffffff', '#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899'
   ];

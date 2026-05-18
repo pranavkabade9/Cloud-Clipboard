@@ -72,7 +72,6 @@ const Sidebar = () => {
   const primaryItems = [
     { id: 'all', icon: LayoutGrid, label: 'Everything' },
     { id: 'notes', icon: StickyNote, label: 'Notes' },
-    { id: 'reminders', icon: Bell, label: 'Reminders' },
     { id: 'images', icon: ImageIcon, label: 'Media Vault' },
   ];
 
@@ -168,30 +167,6 @@ const Sidebar = () => {
       </div>
 
       <div className="p-6 space-y-6 mt-auto">
-        {isSidebarOpen && (
-          <div className="p-5 rounded-3xl bg-bg-primary border border-border-primary">
-            <div className="flex items-center justify-between mb-3 text-text-secondary">
-               <div className="flex items-center gap-2">
-                  <HardDrive className="h-3.5 w-3.5" />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Digital Weight</span>
-               </div>
-               <span className="text-[9px] font-bold">{Math.round(storagePercentage)}%</span>
-            </div>
-            <div className="h-1.5 w-full bg-border-primary rounded-full overflow-hidden">
-               <motion.div 
-                 initial={{ width: 0 }}
-                 animate={{ width: `${Math.min(100, storagePercentage)}%` }} 
-                 className={cn(
-                   "h-full transition-all duration-1000", 
-                   storagePercentage > 90 ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : 
-                   storagePercentage > 70 ? "bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]" : 
-                   "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                 )} 
-               />
-            </div>
-          </div>
-        )}
-
         {isMobile && !isSidebarOpen && (
            <div className="flex items-center gap-3">
              <button 

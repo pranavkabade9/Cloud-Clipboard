@@ -48,7 +48,13 @@ interface AppState {
   isSidebarOpen: boolean;
   isNoteEditorOpen: boolean;
   isSettingsOpen: boolean;
+  isManageDataOpen: boolean;
   authInitialized: boolean;
+  undoAction: {
+    message: string;
+    action: () => void;
+    id: string;
+  } | null;
   
   setAuthInitialized: (initialized: boolean) => void;
   setUser: (user: FirebaseUser | null) => void;
@@ -67,12 +73,14 @@ interface AppState {
   setIsSidebarOpen: (isOpen: boolean) => void;
   setIsNoteEditorOpen: (isOpen: boolean) => void;
   setIsSettingsOpen: (isOpen: boolean) => void;
+  setIsManageDataOpen: (isOpen: boolean) => void;
+  setUndoAction: (action: { message: string; action: () => void; id: string } | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
   user: null,
   userProfile: null,
-  isGuest: false,
+  isGuest: localStorage.getItem('is_guest') === 'true',
   clipboardItems: [],
   uploadingItems: [],
   labels: [],
@@ -85,12 +93,17 @@ export const useStore = create<AppState>((set) => ({
   isSidebarOpen: true,
   isNoteEditorOpen: false,
   isSettingsOpen: false,
+  isManageDataOpen: false,
   authInitialized: false,
+  undoAction: null,
 
   setAuthInitialized: (authInitialized) => set({ authInitialized }),
   setUser: (user) => set({ user }),
   setUserProfile: (userProfile) => set({ userProfile }),
-  setIsGuest: (isGuest) => set({ isGuest }),
+  setIsGuest: (isGuest) => {
+    localStorage.setItem('is_guest', String(isGuest));
+    set({ isGuest });
+  },
   setClipboardItems: (clipboardItems) => set({ clipboardItems }),
   addUploadingItem: (item) => set((state) => ({ uploadingItems: [item, ...state.uploadingItems] })),
   removeUploadingItem: (id) => set((state) => ({ uploadingItems: state.uploadingItems.filter(i => i.id !== id) })),
@@ -114,6 +127,8 @@ export const useStore = create<AppState>((set) => ({
   setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
   setIsNoteEditorOpen: (isNoteEditorOpen) => set({ isNoteEditorOpen }),
   setIsSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
+  setIsManageDataOpen: (isManageDataOpen) => set({ isManageDataOpen }),
+  setUndoAction: (undoAction) => set({ undoAction }),
 }));
 
 

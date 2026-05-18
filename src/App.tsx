@@ -2,9 +2,9 @@ import React, { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { useStore } from './store/useStore';
 import { initAuth } from './services/auth';
-import { reminderManager } from './services/reminderManager';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
+import UndoSnackbar from './components/ui/UndoSnackbar';
 
 import { cn } from './utils/utils';
 
@@ -13,8 +13,6 @@ export default function App() {
 
   useEffect(() => {
     initAuth();
-    reminderManager.start();
-    return () => reminderManager.stop();
   }, []);
 
   useEffect(() => {
@@ -42,6 +40,7 @@ export default function App() {
   return (
     <div className="min-h-screen font-sans transition-colors duration-300 bg-bg-primary text-text-primary">
       {(user || isGuest) ? <Dashboard /> : <LandingPage />}
+      <UndoSnackbar />
       <Toaster 
         theme={theme}
         position="bottom-center"

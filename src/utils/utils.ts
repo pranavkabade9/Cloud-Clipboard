@@ -14,17 +14,30 @@ export function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export function getRelativeTime(date: Date) {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
+export function getRelativeTime(date: Date | any) {
+  if (!date) return 'Some time ago';
   
-  if (minutes < 5) return 'Recently copied';
-  if (minutes < 60) return `${minutes} minutes ago`;
+  // Handle Firestore Timestamps
+  const d = date?.toDate ? date.toDate() : new Date(date);
+  
+  if (isNaN(d.getTime())) return 'Recently copied';
+  
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  
+  // If the date is in the future or very close to now
+  if (diff < 0 || diff < 300000) return 'Recently copied';
+  
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes} min ago`;
   
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hours ago`;
+  if (hours < 24) return `${hours} hrs ago`;
   
   const days = Math.floor(hours / 24);
-  return `${days} days ago`;
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  
+  const weeks = Math.floor(days / 7);
+  return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
 }
