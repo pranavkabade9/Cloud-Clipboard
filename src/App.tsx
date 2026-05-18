@@ -16,6 +16,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const checkMobile = () => {
+      useStore.getState().setIsMobile(window.innerWidth < 1024);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {

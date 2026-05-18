@@ -7,49 +7,48 @@ import {
   doc, 
   getDoc, 
   setDoc, 
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot 
 } from 'firebase/firestore';
 import { auth, googleProvider, db } from './firebase';
 import { useStore } from '../store/useStore';
 
+let profileUnsubscribe: (() => void) | null = null;
+
 export const initAuth = () => {
   onAuthStateChanged(auth, async (user) => {
+    // Clean up previous subscription
+    if (profileUnsubscribe) {
+      profileUnsubscribe();
+      profileUnsubscribe = null;
+    }
+
     useStore.getState().setUser(user);
     useStore.getState().setAuthInitialized(true);
+    
     if (user) {
       useStore.getState().setIsGuest(false);
-      try {
-        // Fetch user profile from Firestore
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (userSnap.exists()) {
+      
+      const userRef = doc(db, 'users', user.uid);
+      profileUnsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
           useStore.getState().setUserProfile({
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
-            storageUsed: userSnap.data().storageUsed || 0,
+            storageUsed: docSnap.data().storageUsed || 0,
+            updatedAt: docSnap.data({ serverTimestamps: 'estimate' }).updatedAt,
           });
         } else {
-          // Create initial profile
-          const initialProfile = {
+          setDoc(userRef, {
             userId: user.uid,
             storageUsed: 0,
             updatedAt: serverTimestamp(),
-          };
-          await setDoc(userRef, initialProfile);
-          useStore.getState().setUserProfile({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            storageUsed: 0,
-          });
+          }, { merge: true });
         }
-      } catch (error) {
-        console.error("Failed to sync profile", error);
-        // Set a basic profile if Firestore fails but user is authenticated
+      }, (error) => {
+        console.error("Profile sync failed", error);
         useStore.getState().setUserProfile({
           uid: user.uid,
           email: user.email,
@@ -57,7 +56,7 @@ export const initAuth = () => {
           photoURL: user.photoURL,
           storageUsed: 0,
         });
-      }
+      });
     } else {
       useStore.getState().setUserProfile(null);
     }

@@ -1,10 +1,10 @@
 {
-  "projectId": "clipboard-content",
-  "appId": "1:110059989391:web:e43440abfa0559ac7a03fa",
-  "apiKey": "AIzaSyBUe3uofKR1CXrOzSenKnpWsx_UpvrEUag",
-  "authDomain": "clipboard-content.firebaseapp.com",
+  "projectId": "sharp-feather-gf4nj",
+  "appId": "1:469327030762:web:004a89d002c5e55bfd6a93",
+  "apiKey": "AIzaSyC1Z3ja5LlDQVuS0iza39aScq-Qg3IHD5s",
+  "authDomain": "sharp-feather-gf4nj.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-c384ae67-c5df-423c-8c98-2407d6bc7fac",
-  "storageBucket": "clipboard-content.firebasestorage.app",
-  "messagingSenderId": "110059989391",
-  "measurementId": "G-GY81LWC98C"
+  "storageBucket": "sharp-feather-gf4nj.firebasestorage.app",
+  "messagingSenderId": "469327030762",
+  "measurementId": ""
 }

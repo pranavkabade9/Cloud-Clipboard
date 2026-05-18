@@ -54,6 +54,10 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     if (user) {
       try {
         await updateDoc(doc(db, 'clipboardItems', item.id), updateData);
+        // Also update sync timestamp on profile
+        await updateDoc(doc(db, 'users', user.uid), {
+          updatedAt: serverTimestamp()
+        });
       } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
       }
@@ -64,7 +68,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
       useStore.getState().setClipboardItems(updated);
     }
   }, [item.id, user, isGuest]);
-  const [relativeTime, setRelativeTime] = useState(getRelativeTime(new Date(item.createdAt?.seconds * 1000 || item.createdAt)));
+  const [relativeTime, setRelativeTime] = useState(getRelativeTime(item.createdAt));
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -89,8 +93,9 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   }, [item.imageUrl]);
 
   useEffect(() => {
+    setRelativeTime(getRelativeTime(item.createdAt));
     const timer = setInterval(() => {
-      setRelativeTime(getRelativeTime(new Date(item.createdAt?.seconds * 1000 || item.createdAt)));
+      setRelativeTime(getRelativeTime(item.createdAt));
     }, 60000);
     return () => clearInterval(timer);
   }, [item.createdAt]);
@@ -275,7 +280,10 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">{item.type}</span>
            </div>
            
-           <div className="lg:opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
+           <div className={cn(
+             "transition-all flex items-center gap-1",
+             "lg:opacity-0 group-hover:opacity-100"
+           )}>
               {!item.deleted ? (
                 <>
                   <button 
@@ -283,39 +291,39 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                       e.stopPropagation();
                       setIsExpanded(true);
                     }} 
-                    className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
+                    className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
                     title="Expand View"
                   >
-                    <Maximize2 className="h-3.5 w-3.5" />
+                    <Maximize2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
                   <button 
                     onClick={handleArchive} 
-                    className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
+                    className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
                     title="Archive"
                   >
-                    <Archive className="h-3.5 w-3.5" />
+                    <Archive className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
                   <button 
                     onClick={handlePin} 
                     className={cn(
-                      "p-2 rounded-lg transition-all border border-transparent", 
+                      "p-3 sm:p-2 rounded-lg transition-all border border-transparent", 
                       item.pinned ? "text-orange-500 bg-orange-500/10 border-orange-500/20" : "text-text-muted hover:text-text-primary hover:bg-bg-primary hover:border-border-primary"
                     )}
                     title="Pin"
                   >
-                    <Pin className={cn("h-3.5 w-3.5", item.pinned && "fill-current")} />
+                    <Pin className={cn("h-4 w-4 sm:h-3.5 sm:w-3.5", item.pinned && "fill-current")} />
                   </button>
-                  <button onClick={startDelete} className="p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete">
-                    <Trash2 className="h-3.5 w-3.5" />
+                  <button onClick={startDelete} className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete">
+                    <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
                 </>
               ) : (
                 <>
-                  <button onClick={handleRestore} className="p-2 rounded-lg text-text-muted hover:text-green-500 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition-all" title="Restore">
-                    <Clock className="h-3.5 w-3.5" />
+                  <button onClick={handleRestore} className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-green-500 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition-all" title="Restore">
+                    <Clock className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
-                  <button onClick={handlePermanentDelete} className="p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete Permanently">
-                    <Trash2 className="h-3.5 w-3.5" />
+                  <button onClick={handlePermanentDelete} className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete Permanently">
+                    <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
                 </>
               )}

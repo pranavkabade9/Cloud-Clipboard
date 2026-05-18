@@ -15,29 +15,41 @@ export function formatBytes(bytes: number, decimals = 2) {
 }
 
 export function getRelativeTime(date: Date | any) {
-  if (!date) return 'Some time ago';
+  if (!date) return 'Recently';
   
-  // Handle Firestore Timestamps
-  const d = date?.toDate ? date.toDate() : new Date(date);
+  // Handle Firestore Timestamps and other formats
+  let d: Date;
+  if (date?.toDate) {
+    d = date.toDate();
+  } else if (date?.seconds) {
+    d = new Date(date.seconds * 1000);
+  } else {
+    d = new Date(date);
+  }
   
-  if (isNaN(d.getTime())) return 'Recently copied';
+  if (isNaN(d.getTime())) return 'Recently';
+  
+  // Handle Unix Epoch (1970) or extremely old dates as invalid for this app's context
+  if (d.getTime() < 1000000000) return 'Recently';
   
   const now = new Date();
   const diff = now.getTime() - d.getTime();
   
-  // If the date is in the future or very close to now
-  if (diff < 0 || diff < 300000) return 'Recently copied';
+  // If the date is in the future or very close to now (less than 1 minute)
+  if (diff < 30000) return 'Just now';
+  if (diff < 60000) return 'Recently';
   
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return `${minutes}m ago`;
   
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hrs ago`;
+  if (hours < 24) return `${hours}h ago`;
   
   const days = Math.floor(hours / 24);
   if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
+  if (days < 7) return `${days}d ago`;
   
   const weeks = Math.floor(days / 7);
+  if (weeks > 52) return 'Long ago';
   return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
 }

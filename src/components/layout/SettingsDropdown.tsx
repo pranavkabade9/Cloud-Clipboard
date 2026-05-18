@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { signOut } from '../../services/auth';
-import { formatBytes, cn } from '../../utils/utils';
+import { formatBytes, cn, getRelativeTime } from '../../utils/utils';
 import { toast } from 'sonner';
 import { db, handleFirestoreError, OperationType, auth } from '../../services/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc, writeBatch, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
@@ -150,7 +150,7 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="absolute top-full right-0 mt-4 w-[340px] max-h-[80vh] overflow-y-auto rounded-[32px] border border-border-primary bg-bg-secondary shadow-2xl backdrop-blur-3xl z-[110] p-6 custom-scrollbar font-['Poppins']"
+            className="absolute top-full right-0 mt-4 w-[340px] max-w-[calc(100vw-32px)] max-h-[80vh] overflow-y-auto rounded-[32px] border border-border-primary bg-bg-secondary shadow-2xl backdrop-blur-3xl z-[110] p-6 custom-scrollbar font-['Poppins']"
           >
             <div className="space-y-8">
               {!isManageDataOpen ? (
@@ -169,7 +169,16 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
                       </div>
                       <div className="flex flex-col">
                         <p className="text-sm font-black text-text-primary">{user?.displayName || "Guest User"}</p>
-                        <p className="text-[10px] font-bold text-text-muted truncate max-w-[180px]">{user?.email || "Local storage session"}</p>
+                        {user ? (
+                           <div className="flex items-center gap-1.5 mt-0.5">
+                             <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                             <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider">
+                               Synced {getRelativeTime(userProfile?.updatedAt)}
+                             </p>
+                           </div>
+                        ) : (
+                          <p className="text-[10px] font-bold text-text-muted truncate max-w-[180px]">{user?.email || "Local storage session"}</p>
+                        )}
                       </div>
                     </div>
                   </div>

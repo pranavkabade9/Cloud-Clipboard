@@ -280,13 +280,13 @@ const ModeButton = ({ active, onClick, icon: Icon, label }: any) => (
   <button 
     onClick={onClick}
     className={cn(
-      "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95",
+      "flex items-center gap-2 px-4 py-3 sm:py-2 rounded-xl text-[11px] sm:text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95",
       active 
         ? "bg-blue-500/10 text-blue-500 decoration-blue-500/30" 
-        : "text-text-muted hover:bg-bg-primary hover:text-text-primary"
+        : "text-text-secondary hover:bg-bg-primary hover:text-text-primary"
     )}
   >
-    <Icon className="h-3.5 w-3.5" />
+    <Icon className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
     {label}
   </button>
 );

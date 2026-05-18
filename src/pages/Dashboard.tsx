@@ -205,7 +205,10 @@ const Dashboard = () => {
       );
 
       const unsubscribeItems = onSnapshot(itemsQuery, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const items = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data({ serverTimestamps: 'estimate' }) 
+        } as any));
         setClipboardItems(items);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, 'clipboardItems');
@@ -218,7 +221,10 @@ const Dashboard = () => {
       );
 
       const unsubscribeLabels = onSnapshot(labelsQuery, (snapshot) => {
-        const labels = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const labels = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data({ serverTimestamps: 'estimate' }) 
+        } as any));
         setLabels(labels);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, 'labels');
@@ -272,9 +278,9 @@ const Dashboard = () => {
       <main className="relative flex-1 flex flex-col min-w-0 transition-all duration-500 overflow-hidden">
         <Navbar />
         
-        <div className="flex-1 overflow-y-auto px-4 lg:px-8 pt-24 lg:pt-28 pb-32 lg:pb-12 custom-scrollbar">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex-1 overflow-y-auto px-4 lg:px-8 pt-20 sm:pt-24 lg:pt-28 pb-40 lg:pb-12 custom-scrollbar">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">
                   {activeFilter === 'all' ? 'Unified Stream' : 

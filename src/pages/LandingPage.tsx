@@ -96,19 +96,19 @@ const LandingPage = () => {
           <span className="text-xl font-bold tracking-tighter text-text-primary">CloudClip</span>
         </div>
         
-        <div className="flex items-center gap-4 pointer-events-auto">
+        <div className="flex items-center gap-2 sm:gap-4 pointer-events-auto">
           <button 
             onClick={toggleTheme}
-            className="p-3 rounded-full border border-border-primary bg-bg-secondary/50 backdrop-blur-xl text-text-primary hover:scale-110 transition-all shadow-lg"
+            className="p-2 sm:p-3 rounded-full border border-border-primary bg-bg-secondary/50 backdrop-blur-xl text-text-primary hover:scale-110 transition-all shadow-lg"
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {theme === 'dark' ? <Sun className="h-4 w-4 sm:h-5 sm:w-5" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
           </button>
           <button 
             onClick={() => {
               const el = document.getElementById('auth-section');
               el?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="hidden md:flex px-6 py-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white font-bold transition-all active:scale-95 shadow-xl shadow-blue-500/20"
+            className="flex px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs sm:text-base transition-all active:scale-95 shadow-xl shadow-blue-500/20"
           >
             Sign In
           </button>
@@ -139,7 +139,7 @@ const LandingPage = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
-            className="text-6xl md:text-8xl lg:text-9xl font-extrabold text-text-primary tracking-tight leading-[0.95] mb-8"
+            className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-extrabold text-text-primary tracking-tight leading-[0.95] mb-8"
           >
             Your Clipboard. <br />
             <span className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">

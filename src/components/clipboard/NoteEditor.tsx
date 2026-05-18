@@ -15,6 +15,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { cn } from '../../utils/utils';
+import { useStore } from '../../store/useStore';
 
 interface NoteEditorProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ interface NoteEditorProps {
 }
 
 const NoteEditor = ({ isOpen, onClose, onSave, initialContent = '', noteId }: NoteEditorProps) => {
+  const { isMobile } = useStore();
   const [content, setContent] = useState(initialContent);
   const [isMaximized, setIsMaximized] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -53,14 +55,16 @@ const NoteEditor = ({ isOpen, onClose, onSave, initialContent = '', noteId }: No
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      initial={{ opacity: 0, scale: isMobile ? 1 : 0.9, y: isMobile ? 100 : 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+      exit={{ opacity: 0, scale: isMobile ? 1 : 0.9, y: isMobile ? 100 : 20 }}
       className={cn(
-        "fixed z-[100] bg-bg-secondary border border-border-primary shadow-2xl transition-all duration-500 font-['Poppins']",
-        isMaximized 
-          ? "inset-4 rounded-[40px]" 
-          : "bottom-8 right-8 w-full max-w-2xl h-[600px] rounded-[32px]"
+        "fixed z-[150] bg-bg-secondary border border-border-primary shadow-2xl transition-all duration-500 font-['Poppins']",
+        isMobile 
+          ? "inset-0 rounded-none" 
+          : isMaximized 
+            ? "inset-4 rounded-[40px]" 
+            : "bottom-8 right-8 w-full max-w-2xl h-[600px] rounded-[32px]"
       )}
     >
       <div className="flex flex-col h-full">

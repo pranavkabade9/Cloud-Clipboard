@@ -91,37 +91,40 @@ const Navbar = () => {
   const pinnedItems = clipboardItems.filter(i => i.pinned).slice(0, 2);
 
   return (
-    <header className="fixed top-0 right-0 left-0 z-40 flex items-center justify-between h-20 px-4 lg:px-8 border-b border-border-primary bg-bg-secondary/80 backdrop-blur-3xl font-['Poppins']">
-      <div className="flex items-center gap-4 lg:w-64">
+    <header className="fixed top-0 right-0 left-0 z-40 flex items-center justify-between h-16 sm:h-20 px-3 sm:px-4 lg:px-8 border-b border-border-primary bg-bg-secondary/80 backdrop-blur-3xl font-['Poppins']">
+      <div className="flex items-center gap-2 sm:gap-4 lg:w-64">
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className={cn(
-            "p-3 rounded-2xl transition-all active:scale-90 border border-border-primary bg-bg-primary text-text-primary hover:border-blue-500/50",
+            "p-2.5 sm:p-3 rounded-2xl transition-all active:scale-90 border border-border-primary bg-bg-primary text-text-primary hover:border-blue-500/50",
             "shadow-sm backdrop-blur-md"
           )}
         >
-          {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {isSidebarOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
         </button>
         
-        {!isSidebarOpen && !isMobile && (
+        {(isMobile && !isSidebarOpen) && (
           <div 
-            onClick={() => setIsSidebarOpen(true)}
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="flex items-center gap-2 cursor-pointer group"
           >
-            <div className="h-10 w-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-xl shadow-blue-500/30 group-hover:scale-110 transition-transform">
-              <Zap className="h-5 w-5 text-white" />
+            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-xl shadow-blue-500/30 group-hover:scale-110 transition-transform">
+              <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black tracking-tighter text-text-primary leading-none">Vault</span>
-              <span className="text-[7px] font-black uppercase tracking-[0.2em] text-blue-500">Cloud Clip</span>
+            <div className="hidden xs:flex flex-col">
+              <span className="text-xs sm:text-sm font-black tracking-tighter text-text-primary leading-none">Vault</span>
+              <span className="text-[6px] sm:text-[7px] font-black uppercase tracking-[0.2em] text-blue-500">Cloud Clip</span>
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex-1 flex justify-center max-w-2xl mx-auto px-2 lg:px-4 relative" ref={searchRef}>
-        <div className="relative group w-full max-w-lg">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+      <div className="flex-1 flex justify-center max-w-2xl mx-auto px-2 relative" ref={searchRef}>
+        <div className={cn(
+          "relative group w-full transition-all duration-300",
+          isMobile && !isSearchFocused ? "max-w-[44px]" : "max-w-lg"
+        )}>
+          <div className="absolute left-0 sm:left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 pointer-events-none">
             <Search className={cn(
               "h-4 w-4 transition-colors",
               isSearchFocused ? "text-blue-500" : "text-text-secondary"
@@ -133,9 +136,20 @@ const Navbar = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
-            placeholder={placeholders[placeholderIndex]}
-            className="w-full h-11 pl-11 pr-12 rounded-2xl border border-border-primary bg-input-bg text-text-primary placeholder-text-muted/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold text-sm"
+            placeholder={isMobile && !isSearchFocused ? "" : placeholders[placeholderIndex]}
+            className={cn(
+              "w-full h-11 pr-4 rounded-2xl border border-border-primary bg-input-bg text-text-primary placeholder-text-muted/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold text-sm",
+              isMobile && !isSearchFocused ? "pl-0 cursor-pointer overflow-hidden opacity-0" : "pl-11"
+            )}
           />
+          {isMobile && !isSearchFocused && (
+             <button 
+               onClick={() => setIsSearchFocused(true)}
+               className="absolute inset-0 z-10 w-full h-full rounded-2xl border border-border-primary bg-bg-primary shadow-sm flex items-center justify-center"
+             >
+                <Search className="h-4 w-4 text-text-secondary" />
+             </button>
+          )}
           <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1 opacity-40">
              <Command className="h-3 w-3" />
              <span className="text-[10px] font-black">K</span>

@@ -23,6 +23,8 @@
         "size": { "type": "number", "description": "Size in bytes" },
         "labelId": { "type": "string" },
         "pinned": { "type": "boolean" },
+        "archived": { "type": "boolean" },
+        "deleted": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

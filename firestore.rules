@@ -32,21 +32,38 @@ service cloud.firestore {
     match /clipboardItems/{itemId} {
       function isValidItem(data) {
         return data.userId == request.auth.uid &&
+               isValidId(data.userId) &&
                data.type in ['text', 'image'] &&
-               (data.type == 'text' ? (data.content is string && data.content.size() <= 100000) : true) &&
-               (data.type == 'image' ? (data.imageUrl is string && data.imageUrl.size() <= 2000) : true) &&
+               (data.get('content', '') is string && data.get('content', '').size() <= 1000000) &&
+               (data.get('imageUrl', '') is string && data.get('imageUrl', '').size() <= 2000) &&
+               (data.get('pinned', false) is bool) &&
+               (data.get('archived', false) is bool) &&
+               (data.get('deleted', false) is bool) &&
+               (data.get('labelId', '') is string && data.get('labelId', '').size() <= 128) &&
                data.size is number &&
-               data.createdAt is timestamp &&
-               data.keys().hasAll(['userId', 'type', 'createdAt', 'size']) &&
-               data.keys().size() <= 12;
+               data.size >= 0 &&
+               data.createdAt is timestamp;
       }
+
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && isValidItem(incoming()) && (incoming().createdAt == request.time || incoming().createdAt is timestamp);
-      allow update: if isOwner(existing().userId) && isValidItem(incoming()) &&
+      
+      allow create: if isSignedIn() && 
+                    isValidItem(incoming()) && 
+                    incoming().createdAt == request.time &&
+                    incoming().keys().hasAll(['userId', 'type', 'createdAt', 'size']) &&
+                    incoming().keys().size() <= 15;
+
+      allow update: if isSignedIn() && 
+                    isValidItem(incoming()) && 
+                    existing().userId == request.auth.uid &&
                     incoming().userId == existing().userId &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['labelId', 'pinned', 'updatedAt', 'content']);
-      allow delete: if isOwner(existing().userId);
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly([
+                      'content', 'imageUrl', 'pinned', 'archived', 'deleted', 'labelId', 'updatedAt'
+                    ]);
+
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
 
     // Labels

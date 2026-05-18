@@ -13,7 +13,8 @@ import {
   Settings,
   HardDrive,
   Zap,
-  StickyNote
+  StickyNote,
+  X
 } from 'lucide-react';
 import { cn } from '../../utils/utils';
 import { useStore } from '../../store/useStore';
@@ -88,31 +89,42 @@ const Sidebar = () => {
   const storagePercentage = userProfile ? (userProfile.storageUsed / storageLimit) * 100 : 0;
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: isSidebarOpen ? 280 : 88 }}
-      className="relative z-50 flex flex-col h-screen border-r border-border-primary bg-bg-secondary font-['Poppins']"
-    >
-      <div 
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="flex items-center h-20 px-6 cursor-pointer group"
+      <motion.aside
+        initial={false}
+        animate={{ width: isSidebarOpen ? (isMobile ? "100%" : 280) : (isMobile ? 0 : 88) }}
+        className={cn(
+          "relative z-50 flex flex-col h-screen border-r border-border-primary bg-bg-secondary font-['Poppins']",
+          isMobile && "fixed inset-y-0 left-0"
+        )}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 shadow-xl shadow-blue-500/20 rotate-3 group-hover:rotate-6 transition-transform">
-            <Zap className="h-6 w-6 text-white" />
+        <div className="flex items-center h-16 sm:h-20 px-6 justify-between border-b border-border-primary/50">
+          <div 
+            onClick={() => !isMobile && setIsSidebarOpen(!isSidebarOpen)}
+            className={cn("flex items-center gap-3", !isMobile && "cursor-pointer group")}
+          >
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-blue-500 shadow-xl shadow-blue-500/20 rotate-3 group-hover:scale-110 transition-transform">
+              <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            </div>
+            {isSidebarOpen && (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                className="ml-2"
+              >
+                <span className="text-xl font-black tracking-tighter text-text-primary block leading-tight">Vault</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-500 block">Cloud Clip</span>
+              </motion.div>
+            )}
           </div>
-          {isSidebarOpen && (
-            <motion.div 
-              initial={{ opacity: 0, x: -10 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              className="ml-2"
+          {isMobile && isSidebarOpen && (
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-3 rounded-2xl bg-bg-primary border border-border-primary text-text-secondary"
             >
-              <span className="text-xl font-black tracking-tighter text-text-primary block leading-tight">Vault</span>
-              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-500 block">Cloud Clip</span>
-            </motion.div>
+              <X className="h-5 w-5" />
+            </button>
           )}
         </div>
-      </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-8 space-y-8 custom-scrollbar">
         <div className="space-y-1">

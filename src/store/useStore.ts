@@ -7,6 +7,7 @@ interface UserProfile {
   displayName: string | null;
   photoURL: string | null;
   storageUsed: number;
+  updatedAt?: any;
 }
 
 interface ClipboardItem {
