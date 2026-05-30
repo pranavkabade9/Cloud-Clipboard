@@ -1,15 +1,37 @@
-import React, { useEffect } from 'react';
-import { Toaster } from 'sonner';
+import React, { useEffect, useState } from 'react';
+import { Toaster, toast } from 'sonner';
 import { useStore } from './store/useStore';
 import { initAuth } from './services/auth';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import UndoSnackbar from './components/ui/UndoSnackbar';
+import InstallPrompt from './components/layout/InstallPrompt';
 
 import { cn } from './utils/utils';
 
 export default function App() {
-  const { user, isGuest, theme, authInitialized } = useStore();
+  const { user, isGuest, theme, authInitialized, isMobile } = useStore();
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      toast.success("Back Online", { description: "Your clips will sync now." });
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      toast.error("Offline Mode", { 
+        description: "Viewing cached fragments. Edits will sync when online.",
+        duration: Infinity
+      });
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     initAuth();
@@ -50,9 +72,10 @@ export default function App() {
     <div className="min-h-screen font-sans transition-colors duration-300 bg-bg-primary text-text-primary">
       {(user || isGuest) ? <Dashboard /> : <LandingPage />}
       <UndoSnackbar />
+      <InstallPrompt />
       <Toaster 
         theme={theme}
-        position="bottom-center"
+        position={isMobile ? "top-center" : "bottom-center"}
         toastOptions={{
           className: cn(
             'rounded-2xl shadow-2xl border font-sans bg-bg-secondary border-border-primary text-text-primary'

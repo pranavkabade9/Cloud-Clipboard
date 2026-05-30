@@ -49,20 +49,20 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
     
     if (user) {
       try {
-        const q = query(collection(db, 'clipboardItems'), where('userId', '==', user.uid));
+        const q = query(collection(db, 'users', user.uid, 'clips'));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.docs.forEach((d) => batch.delete(d.ref));
         
-        batch.update(doc(db, 'users', user.uid), {
+        batch.set(doc(db, 'users', user.uid), {
           storageUsed: 0,
           updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
         
         await batch.commit();
         toast.success("Clipboard cleared");
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, 'clipboardItems');
+        handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/clips`);
       }
     } else {
       localStorage.removeItem('guest_clipboard');
@@ -98,7 +98,7 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
             const batch = writeBatch(db);
             let totalImportSize = 0;
             imported.forEach(item => {
-              const newRef = doc(collection(db, 'clipboardItems'));
+              const newRef = doc(collection(db, 'users', user.uid, 'clips'));
               const { id, ...rest } = item;
               totalImportSize += item.size || 0;
               batch.set(newRef, { 
@@ -109,9 +109,9 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
               });
             });
 
-            await updateDoc(doc(db, 'users', user.uid), {
+            await setDoc(doc(db, 'users', user.uid), {
               storageUsed: (userProfile?.storageUsed || 0) + totalImportSize
-            });
+            }, { merge: true });
 
             await batch.commit();
             toast.success(`Imported ${imported.length} items`);
@@ -204,7 +204,9 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
                     <div className="px-2 space-y-3">
                       <div className="flex items-center justify-between">
                          <span className="text-[10px] font-black text-text-muted uppercase">Digital Weight</span>
-                         <span className="text-sm font-black text-text-primary">{formatBytes(storageUsed)}</span>
+                         <span className="text-sm font-black text-text-primary">
+                           {((storageUsed) / (1024 * 1024)).toFixed(2)} MB / 10 MB Used
+                         </span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-border-primary overflow-hidden">
                         <motion.div 

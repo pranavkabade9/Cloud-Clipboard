@@ -27,10 +27,10 @@ export function getRelativeTime(date: Date | any) {
     d = new Date(date);
   }
   
-  if (isNaN(d.getTime())) return 'Recently';
+  if (isNaN(d.getTime())) return 'Just now';
   
-  // Handle Unix Epoch (1970) or extremely old dates as invalid for this app's context
-  if (d.getTime() < 1000000000) return 'Recently';
+  // Handle Unix Epoch (1970) or unhydrated serverTimestamps (seconds = 0 or extremely old dates)
+  if (d.getTime() < 1577836800000) return 'Just now';
   
   const now = new Date();
   const diff = now.getTime() - d.getTime();

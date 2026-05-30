@@ -23,6 +23,7 @@ import {
   doc, 
   deleteDoc, 
   updateDoc, 
+  setDoc,
   increment, 
   serverTimestamp,
   collection,
@@ -42,7 +43,7 @@ interface ClipboardCardProps {
 }
 
 const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
-  const { user, isGuest, labels, isMobile, setUndoAction } = useStore();
+  const { user, isGuest, isMobile, setUndoAction } = useStore();
   const [isCopied, setIsCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -53,13 +54,13 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   const performUpdate = useCallback(async (updateData: any) => {
     if (user) {
       try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), updateData);
+        await updateDoc(doc(db, 'users', user.uid, 'clips', item.id), updateData);
         // Also update sync timestamp on profile
-        await updateDoc(doc(db, 'users', user.uid), {
+        await setDoc(doc(db, 'users', user.uid), {
           updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
+        handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/clips/${item.id}`);
       }
     } else if (isGuest) {
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
@@ -123,9 +124,9 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     const newPinned = !item.pinned;
     if (user) {
       try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), { pinned: newPinned });
+        await updateDoc(doc(db, 'users', user.uid, 'clips', item.id), { pinned: newPinned });
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
+        handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/clips/${item.id}`);
       }
     } else if (isGuest) {
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
@@ -171,14 +172,14 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     setIsDeleting(true);
     if (user) {
       try {
-        await deleteDoc(doc(db, 'clipboardItems', item.id));
-        await updateDoc(doc(db, 'users', user.uid), {
+        await deleteDoc(doc(db, 'users', user.uid, 'clips', item.id));
+        await setDoc(doc(db, 'users', user.uid), {
           storageUsed: increment(-item.size),
           updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
         toast.success("Permanently deleted");
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `clipboardItems/${item.id}`);
+        handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/clips/${item.id}`);
         setIsDeleting(false);
       }
     } else if (isGuest) {
@@ -204,17 +205,16 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
 
   const handleSaveEdit = useCallback(async () => {
     if (!editContent.trim()) return;
-    const previousContent = item.content;
     if (user) {
       try {
-        await updateDoc(doc(db, 'clipboardItems', item.id), { 
+        await updateDoc(doc(db, 'users', user.uid, 'clips', item.id), { 
           content: editContent.trim(),
           updatedAt: serverTimestamp() 
         });
         toast.success("Clip updated");
         setIsEditing(false);
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `clipboardItems/${item.id}`);
+        handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/clips/${item.id}`);
       }
     } else if (isGuest) {
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
@@ -236,7 +236,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     });
   }, [user, isGuest]);
 
-  const cardLabel = labels.find(l => l.id === item.labelId);
+  const cardLabel = null;
 
   return (
     <motion.div
@@ -340,6 +340,30 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                loading="lazy"
              />
           </div>
+        ) : item.checklist ? (
+          <div className="flex-1 min-h-[100px] mb-4 px-1 space-y-2">
+            <div className="space-y-1.5">
+              {item.checklist.filter((i: any) => !i.completed).slice(0, 4).map((task: any) => (
+                <div key={task.id} className="flex items-center gap-2 group/task">
+                  <div className="h-3.5 w-3.5 rounded-sm border border-border-primary flex-shrink-0" />
+                  <span className="text-xs text-text-primary line-clamp-1 font-medium">{task.text}</span>
+                </div>
+              ))}
+            </div>
+            {item.checklist.some((i: any) => i.completed) && (
+              <div className="pt-2 border-t border-border-primary/50 opacity-50">
+                 {item.checklist.filter((i: any) => i.completed).slice(0, 2).map((task: any) => (
+                    <div key={task.id} className="flex items-center gap-2">
+                      <Check className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                      <span className="text-[10px] text-text-muted line-through decoration-blue-500/30 line-clamp-1">{task.text}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {item.checklist.length > 6 && (
+              <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest">+ {item.checklist.length - 6} more tasks</p>
+            )}
+          </div>
         ) : (
           <div className="flex-1 min-h-[100px] mb-4 px-1">
             <p className="text-text-primary text-sm font-medium leading-relaxed line-clamp-6 whitespace-pre-wrap">
@@ -349,12 +373,6 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
         )}
 
         <div className="flex items-center gap-3 mt-auto pt-4 border-t border-border-primary">
-           {cardLabel && (
-             <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-bg-primary text-[8px] font-black uppercase text-text-muted tracking-wider border border-border-primary">
-               <Tag className="h-2.5 w-2.5" />
-               {cardLabel.name}
-             </div>
-           )}
            <div className="flex items-center gap-1.5 text-text-muted text-[9px] font-black uppercase tracking-widest">
               <Clock className="h-3 w-3" />
               {relativeTime}
@@ -406,6 +424,53 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
                  )}>
                   {item.type === 'image' ? (
                     <img src={resolvedImageUrl} className="w-full h-full object-contain" alt="Deep view" referrerPolicy="no-referrer" />
+                  ) : item.checklist ? (
+                    <div className="w-full h-full p-8 lg:p-16 overflow-y-auto custom-scrollbar flex flex-col gap-8">
+                       <div className="space-y-4">
+                          {item.checklist.filter((i: any) => !i.completed).map((task: any) => (
+                             <div 
+                               key={task.id} 
+                               className="flex items-center gap-4 group"
+                               onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const newChecklist = item.checklist.map((i: any) => i.id === task.id ? { ...i, completed: true } : i);
+                                  await performUpdate({ checklist: newChecklist });
+                                  toast.success("Task completed");
+                               }}
+                             >
+                                <div className="h-6 w-6 rounded-lg border-2 border-border-primary group-hover:border-blue-500 transition-colors" />
+                                <span className="text-xl font-medium text-text-primary">{task.text}</span>
+                             </div>
+                          ))}
+                       </div>
+                       {item.checklist.some((i: any) => i.completed) && (
+                          <div className="pt-8 border-t border-border-primary">
+                             <div className="flex items-center gap-4 mb-6">
+                                <span className="text-xs font-black uppercase tracking-widest text-text-muted">Completed Tasks</span>
+                                <div className="h-px flex-1 bg-border-primary" />
+                             </div>
+                             <div className="space-y-4 opacity-50">
+                                {item.checklist.filter((i: any) => i.completed).map((task: any) => (
+                                   <div 
+                                     key={task.id} 
+                                     className="flex items-center gap-4 cursor-pointer"
+                                     onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const newChecklist = item.checklist.map((i: any) => i.id === task.id ? { ...i, completed: false } : i);
+                                        await performUpdate({ checklist: newChecklist });
+                                        toast.success("Task restored");
+                                     }}
+                                   >
+                                      <div className="h-6 w-6 rounded-lg bg-blue-500 flex items-center justify-center border-2 border-blue-500">
+                                         <Check className="h-4 w-4 text-white" />
+                                      </div>
+                                      <span className="text-xl font-medium text-text-muted line-through decoration-blue-500/50">{task.text}</span>
+                                   </div>
+                                ))}
+                             </div>
+                          </div>
+                       )}
+                    </div>
                   ) : (
                     <div className="w-full h-full p-8 lg:p-16 overflow-y-auto custom-scrollbar flex flex-col h-full">
                       {isEditing ? (

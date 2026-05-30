@@ -8,13 +8,14 @@ import ClipboardGrid from '../components/clipboard/ClipboardGrid';
 import NoteEditor from '../components/clipboard/NoteEditor';
 import { useStore } from '../store/useStore';
 import { db, auth, OperationType, handleFirestoreError, storage } from '../services/firebase';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, increment, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, increment, deleteDoc, Query } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { toast } from 'sonner';
 import { cn } from '../utils/utils';
 import { Upload, Cloud as CloudIcon, Plus, StickyNote, Clipboard, Trash2, Archive, RotateCcw } from 'lucide-react';
 
+import { handleGlobalPaste as triggerPasteService } from '../services/pasteService';
 import { handleImageUpload } from '../services/uploadService';
 
 const Dashboard = () => {
@@ -23,7 +24,6 @@ const Dashboard = () => {
     isGuest, 
     theme, 
     setClipboardItems, 
-    setLabels, 
     userProfile, 
     storageLimit, 
     isMobile, 
@@ -36,45 +36,24 @@ const Dashboard = () => {
   } = useStore();
   const [isDragging, setIsDragging] = useState(false);
 
-  const pasteFromClipboard = async () => {
-    try {
-      const items = await navigator.clipboard.read();
-      let handled = false;
-      
-      for (const item of items) {
-        if (item.types.some(type => type.startsWith('image/'))) {
-          const type = item.types.find(t => t.startsWith('image/'));
-          if (type) {
-            const blob = await item.getType(type);
-            const file = new File([blob], 'pasted-image.png', { type });
-            handleImageFile(file);
-            handled = true;
-          }
-        } else if (item.types.includes('text/plain')) {
-          const blob = await item.getType('text/plain');
-          const text = await blob.text();
-          if (text.trim()) {
-            await saveToClipboard({ type: 'text', content: text.trim() });
-            handled = true;
-          }
-        }
-      }
-      
-      if (!handled) {
-        toast.error("Nothing found in clipboard to paste");
-      }
-    } catch (err) {
-      console.error('Failed to read clipboard:', err);
-      toast.error("Clipboard access denied", {
-        description: "Please check your browser permissions."
-      });
-    }
-  };
+  const [editorMode, setEditorMode] = useState<'text' | 'checklist'>('text');
 
   useEffect(() => {
-    const handlePasteGlobal = () => pasteFromClipboard();
-    window.addEventListener('clipboard-paste-global', handlePasteGlobal as any);
-    return () => window.removeEventListener('clipboard-paste-global', handlePasteGlobal as any);
+    const handleOpenEditor = (e: any) => {
+      setEditorMode(e.detail?.mode || 'text');
+      setIsNoteEditorOpen(true);
+    };
+    globalThis.addEventListener('open-note-editor', handleOpenEditor);
+    return () => globalThis.removeEventListener('open-note-editor', handleOpenEditor);
+  }, [setIsNoteEditorOpen]);
+
+  useEffect(() => {
+    const handlePasteGlobal = () => {
+      console.log("Triggering paste from service on button click...");
+      triggerPasteService();
+    };
+    window.addEventListener('clipboard-paste-global', handlePasteGlobal);
+    return () => window.removeEventListener('clipboard-paste-global', handlePasteGlobal);
   }, []);
 
   useEffect(() => {
@@ -109,14 +88,14 @@ const Dashboard = () => {
           size: itemSize,
           pinned: data.pinned || false,
         };
-        await addDoc(collection(db, 'clipboardItems'), itemData);
+        await addDoc(collection(db, 'users', user.uid, 'clips'), itemData);
         await updateDoc(doc(db, 'users', user.uid), {
           storageUsed: increment(itemSize),
           updatedAt: serverTimestamp(),
         });
         toast.success("Snippet saved");
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'clipboardItems');
+        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/clips`);
       }
     } else if (isGuest) {
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
@@ -135,6 +114,7 @@ const Dashboard = () => {
   };
 
   const handleImageFile = useCallback(async (file: File) => {
+    console.log(`[Dashboard Ctrl+V Upload] Handling file: ${file.name} (${file.size} bytes)`);
     await handleImageUpload({
       file,
       userId: user?.uid,
@@ -143,34 +123,73 @@ const Dashboard = () => {
   }, [user, isGuest]);
 
   const handleGlobalPaste = useCallback(async (e: ClipboardEvent) => {
-    if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+    // Avoid hijacking normal input/textarea pasting
+    const targetTagName = (e.target as HTMLElement)?.tagName;
+    const isEditing = ['INPUT', 'TEXTAREA'].includes(targetTagName) || 
+                     (e.target as HTMLElement)?.isContentEditable ||
+                     (e.target as HTMLElement)?.closest('.note-editor-container');
+                     
+    if (isEditing) {
+      console.log(`[Dashboard Ctrl+V Info] User is actively typing inside an input/textarea element. Allowing native browser paste.`);
+      return;
+    }
 
-    const items = e.clipboardData?.items;
-    if (!items) return;
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) {
+      console.warn("[Dashboard Ctrl+V Warning] Paste triggered but no clipboardData found in event.");
+      return;
+    }
+
+    console.log("[Dashboard Ctrl+V Debug] Clipboard paste event detected globally.", {
+      types: clipboardData.types,
+      itemsLength: clipboardData.items?.length
+    });
 
     let handled = false;
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) {
-          handleImageFile(file);
-          handled = true;
-        }
-      } else if (item.type === 'text/plain') {
-        item.getAsString(async (text) => {
-          if (text.trim()) {
-            await saveToClipboard({ type: 'text', content: text.trim() });
-          }
-        });
+    const items = Array.from(clipboardData.items);
+
+    // 1. Image Capture (Priority)
+    const imageItem = items.find(item => item.type.startsWith('image/'));
+    if (imageItem) {
+      const file = imageItem.getAsFile();
+      if (file) {
+        console.log(`[Dashboard Ctrl+V Success] Detected image/screenshot on clipboard: "${file.name}" | Size: ${file.size} bytes`);
+        e.preventDefault();
         handled = true;
+        // Asynchronously process to keep UI responsive
+        setTimeout(() => {
+          handleImageFile(file);
+        }, 0);
+      }
+    } 
+    
+    // 2. Text Capture
+    if (!handled) {
+      const text = clipboardData.getData('text/plain') || clipboardData.getData('text');
+      if (text && text.trim()) {
+        console.log(`[Dashboard Ctrl+V Success] Detected plain text input synchronously on clipboard. Content preview length: ${text.length}`);
+        e.preventDefault();
+        handled = true;
+        setTimeout(async () => {
+          await saveToClipboard({ type: 'text', content: text.trim() });
+        }, 0);
       }
     }
-    if (handled) e.preventDefault();
+
+    if (handled) {
+      console.log("[Dashboard Ctrl+V Complete] Global event successfully handled and prevented default.");
+    }
   }, [saveToClipboard, handleImageFile]);
 
   useEffect(() => {
+    console.log("[Dashboard Core] Registering robust document 'paste' listener for universal Ctrl+V intercept...");
+    document.addEventListener('paste', handleGlobalPaste);
     window.addEventListener('paste', handleGlobalPaste);
-    return () => window.removeEventListener('paste', handleGlobalPaste);
+    return () => {
+      console.log("[Dashboard Core] Cleaning up universal 'paste' listeners...");
+      document.removeEventListener('paste', handleGlobalPaste);
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
   }, [handleGlobalPaste]);
 
   const onDragOver = (e: React.DragEvent) => {
@@ -198,47 +217,61 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      const itemsQuery = query(
-        collection(db, 'clipboardItems'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
+      const fetchItems = (useOrderBy = true): (() => void) => {
+        let itemsQuery: Query;
+        const clipsRef = collection(db, 'users', user.uid, 'clips');
+        
+        if (useOrderBy) {
+          itemsQuery = query(
+            clipsRef,
+            orderBy('createdAt', 'desc')
+          );
+        } else {
+          itemsQuery = clipsRef;
+        }
 
-      const unsubscribeItems = onSnapshot(itemsQuery, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ 
-          id: doc.id, 
-          ...doc.data({ serverTimestamps: 'estimate' }) 
-        } as any));
-        setClipboardItems(items);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, 'clipboardItems');
-      });
+        console.log(`[Realtime Sync] Setting up Firestore listener on path: 'users/${user.uid}/clips' (Ordered: ${useOrderBy})`);
+        
+        const unsub = onSnapshot(itemsQuery, { includeMetadataChanges: true }, (snapshot: any) => {
+          console.log(`[Realtime Sync] Firestore update triggered. Document count received: ${snapshot.docs.length}. Metadata changes present: ${snapshot.metadata.hasPendingWrites ? 'Local Optimistic Write' : 'Cloud Sync Complete'}`);
+          
+          const items = snapshot.docs.map((doc: any) => ({ 
+            id: doc.id, 
+            ...doc.data({ serverTimestamps: 'estimate' }) 
+          } as any));
+          
+          if (!useOrderBy) {
+            console.log("[Realtime Sync] Sorting items locally on client side...");
+            items.sort((a, b) => {
+              const ta = a.createdAt?.toMillis?.() || new Date(a.createdAt).getTime() || 0;
+              const tb = b.createdAt?.toMillis?.() || new Date(b.createdAt).getTime() || 0;
+              return tb - ta;
+            });
+          }
+          
+          console.log(`[Realtime Sync] Hydrating Zustand store with ${items.length} clips.`);
+          setClipboardItems(items);
+        }, (error) => {
+          console.error(`[Realtime Sync] Subscription caught Firestore connection error:`, error);
+          if (error.message.includes('requires an index') && useOrderBy) {
+            console.warn("[Realtime Sync] Firestore index missing, falling back to local sort");
+            unsubscribeItems?.();
+            unsubscribeItems = fetchItems(false);
+          } else {
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}/clips`);
+          }
+        });
+        return unsub;
+      };
 
-      const labelsQuery = query(
-        collection(db, 'labels'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'asc')
-      );
-
-      const unsubscribeLabels = onSnapshot(labelsQuery, (snapshot) => {
-        const labels = snapshot.docs.map(doc => ({ 
-          id: doc.id, 
-          ...doc.data({ serverTimestamps: 'estimate' }) 
-        } as any));
-        setLabels(labels);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, 'labels');
-      });
+      let unsubscribeItems = fetchItems(true);
 
       return () => {
-        unsubscribeItems();
-        unsubscribeLabels();
+        unsubscribeItems?.();
       };
     } else if (isGuest) {
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
       setClipboardItems(localItems);
-      const localLabels = JSON.parse(localStorage.getItem('guest_labels') || '[]');
-      setLabels(localLabels);
     }
   }, [user, isGuest]);
 
@@ -310,11 +343,16 @@ const Dashboard = () => {
               {isNoteEditorOpen && (
                 <NoteEditor 
                   isOpen={isNoteEditorOpen}
-                  onClose={() => setIsNoteEditorOpen(false)}
-                  onSave={(content) => {
+                  initialMode={editorMode}
+                  onClose={() => {
+                    setIsNoteEditorOpen(false);
+                    setEditorMode('text');
+                  }}
+                  onSave={(data) => {
                     saveToClipboard({
                       type: 'text',
-                      content: content,
+                      content: data.content,
+                      checklist: data.checklist || null
                     });
                   }}
                 />

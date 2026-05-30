@@ -18,9 +18,11 @@ import {
   Zap,
   Image as ImageIcon,
   StickyNote,
-  Sparkles
+  Sparkles,
+  ClipboardPaste
 } from 'lucide-react';
 import { signOut } from '../../services/auth';
+import { handleGlobalPaste } from '../../services/pasteService';
 import { useStore } from '../../store/useStore';
 import { formatBytes, cn } from '../../utils/utils';
 import SettingsDropdown from './SettingsDropdown';
@@ -66,10 +68,15 @@ const Navbar = () => {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
+      if (e.key === 'Escape' && isSearchFocused) {
+        setIsSearchFocused(false);
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isSearchFocused, setSearchQuery]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -122,7 +129,7 @@ const Navbar = () => {
       <div className="flex-1 flex justify-center max-w-2xl mx-auto px-2 relative" ref={searchRef}>
         <div className={cn(
           "relative group w-full transition-all duration-300",
-          isMobile && !isSearchFocused ? "max-w-[44px]" : "max-w-lg"
+          isMobile && !isSearchFocused ? "max-w-[120px]" : "max-w-lg"
         )}>
           <div className="absolute left-0 sm:left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 pointer-events-none">
             <Search className={cn(
@@ -136,24 +143,31 @@ const Navbar = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
-            placeholder={isMobile && !isSearchFocused ? "" : placeholders[placeholderIndex]}
+            placeholder={isMobile && !isSearchFocused ? "Search..." : placeholders[placeholderIndex]}
             className={cn(
-              "w-full h-11 pr-4 rounded-2xl border border-border-primary bg-input-bg text-text-primary placeholder-text-muted/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold text-sm",
-              isMobile && !isSearchFocused ? "pl-0 cursor-pointer overflow-hidden opacity-0" : "pl-11"
+              "w-full h-11 pr-12 rounded-2xl border border-border-primary bg-input-bg text-text-primary placeholder-text-muted/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold text-sm",
+              isMobile && !isSearchFocused ? "pl-11" : "pl-11"
             )}
           />
-          {isMobile && !isSearchFocused && (
-             <button 
-               onClick={() => setIsSearchFocused(true)}
-               className="absolute inset-0 z-10 w-full h-full rounded-2xl border border-border-primary bg-bg-primary shadow-sm flex items-center justify-center"
-             >
-                <Search className="h-4 w-4 text-text-secondary" />
-             </button>
+          {(searchQuery || isSearchFocused) && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setSearchQuery('');
+                setIsSearchFocused(false);
+                searchInputRef.current?.blur();
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-xl hover:bg-bg-primary text-text-secondary transition-all"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1 opacity-40">
-             <Command className="h-3 w-3" />
-             <span className="text-[10px] font-black">K</span>
-          </div>
+          {!searchQuery && !isSearchFocused && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1 opacity-40">
+               <Command className="h-3 w-3" />
+               <span className="text-[10px] font-black">K</span>
+            </div>
+          )}
         </div>
 
         <AnimatePresence>
@@ -274,15 +288,14 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-2 lg:w-80 justify-end">
-        {!isMobile && (
-          <button 
-            className="p-2.5 rounded-[18px] border border-border-primary bg-bg-primary text-text-secondary hover:text-blue-500 transition-all shadow-sm active:scale-95"
-            title="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-500 border-2 border-bg-primary" />
-          </button>
-        )}
+        <button 
+          onClick={handleGlobalPaste}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20 shadow-sm group"
+          title="Paste from Clipboard"
+        >
+          <ClipboardPaste className="h-4 w-4 transition-transform group-active:scale-90" />
+          <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Paste</span>
+        </button>
 
         <div className="relative">
           <button 
@@ -292,10 +305,6 @@ const Navbar = () => {
               isMobile ? "pl-2 pr-1" : "pl-4 pr-1.5"
             )}
           >
-            {isMobile && (
-              <Bell className="h-4 w-4 text-text-secondary mr-1" />
-            )}
-            
             <div className="flex items-center gap-3 pr-1">
                <span className={cn(
                  "text-sm font-bold text-text-primary leading-none truncate max-w-[120px] sm:max-w-[200px]",

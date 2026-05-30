@@ -21,25 +21,24 @@
         "content": { "type": "string" },
         "imageUrl": { "type": "string" },
         "size": { "type": "number", "description": "Size in bytes" },
-        "labelId": { "type": "string" },
         "pinned": { "type": "boolean" },
         "archived": { "type": "boolean" },
         "deleted": { "type": "boolean" },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" },
+              "completed": { "type": "boolean" }
+            }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "type", "createdAt"]
-    },
-    "Label": {
-      "title": "Label",
-      "description": "Custom label for organizing items",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "name": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "name"]
     }
   },
   "firestore": {
@@ -50,10 +49,6 @@
     "/clipboardItems/{itemId}": {
       "schema": "ClipboardItem",
       "description": "All clipboard items"
-    },
-    "/labels/{labelId}": {
-      "schema": "Label",
-      "description": "User defined labels"
     }
   }
 }

@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import { useStore } from '../../store/useStore';
 import { db, storage, OperationType, handleFirestoreError } from '../../services/firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { cn } from '../../utils/utils';
@@ -72,16 +72,16 @@ const ClipboardInput = () => {
           pinned: false,
         };
         
-        await addDoc(collection(db, 'clipboardItems'), itemData);
+        await addDoc(collection(db, 'users', user.uid, 'clips'), itemData);
         
-        await updateDoc(doc(db, 'users', user.uid), {
+        await setDoc(doc(db, 'users', user.uid), {
           storageUsed: increment(itemSize),
           updatedAt: serverTimestamp(),
-        });
+        }, { merge: true });
 
         toast.success("Saved to your vault");
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'clipboardItems');
+        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/clips`);
       }
     } else if (isGuest) {
       const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
@@ -174,7 +174,10 @@ const ClipboardInput = () => {
         <div className="flex flex-col">
           {/* Top Bar for Mode selection */}
           <div className="flex items-center gap-1.5 px-4 pt-4 pb-1 overflow-x-auto no-scrollbar">
-             <ModeButton active={!isExpanded} onClick={() => inputRef.current?.focus()} icon={Command} label="Note" />
+             <ModeButton active={!isExpanded} onClick={() => { setIsExpanded(true); inputRef.current?.focus(); }} icon={Command} label="Note" />
+             <ModeButton active={false} onClick={() => {
+               globalThis.dispatchEvent(new CustomEvent('open-note-editor', { detail: { mode: 'checklist' } }));
+             }} icon={CheckSquare} label="Checklist" />
              <ModeButton active={false} onClick={() => setIsDrawingOpen(true)} icon={Pencil} label="Sketch" />
              <ModeButton active={false} onClick={() => {
                 const input = document.createElement('input');

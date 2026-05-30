@@ -126,7 +126,7 @@ const ClipboardGrid = () => {
                     
                     try {
                       if (user) {
-                        const { deleteDoc, doc, updateDoc, increment } = await import('firebase/firestore');
+                        const { deleteDoc, doc, setDoc, increment } = await import('firebase/firestore');
                         const { deleteObject, ref } = await import('firebase/storage');
                         const { db, storage } = await import('../../services/firebase');
                         
@@ -134,7 +134,7 @@ const ClipboardGrid = () => {
                         
                         await Promise.all(deletedItems.map(async (item) => {
                           // Delete from Firestore
-                          await deleteDoc(doc(db, 'clipboardItems', item.id));
+                          await deleteDoc(doc(db, 'users', user.uid, 'clips', item.id));
                           totalSizeFreed += item.size || 0;
                           
                           // If it's an image, delete from Storage
@@ -149,9 +149,9 @@ const ClipboardGrid = () => {
                         }));
 
                         // Update storage weight in profile
-                        await updateDoc(doc(db, 'users', user.uid), {
+                        await setDoc(doc(db, 'users', user.uid), {
                           storageUsed: increment(-totalSizeFreed)
-                        });
+                        }, { merge: true });
                         
                       } else if (isGuest) {
                         const remaining = clipboardItems.filter(i => !i.deleted);

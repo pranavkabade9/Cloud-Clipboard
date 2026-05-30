@@ -16,21 +16,14 @@ interface ClipboardItem {
   content?: string;
   imageUrl?: string;
   size: number;
-  labelId?: string;
   pinned: boolean;
   archived?: boolean;
   deleted?: boolean;
-  reminder?: string | null;
   createdAt: any;
   userId: string;
   metadata?: any;
   isOptimistic?: boolean;
-}
-
-interface Label {
-  id: string;
-  name: string;
-  color?: string;
+  checklist?: { id: string; text: string; completed: boolean }[];
 }
 
 interface AppState {
@@ -39,17 +32,16 @@ interface AppState {
   isGuest: boolean;
   clipboardItems: ClipboardItem[];
   uploadingItems: Partial<ClipboardItem>[];
-  labels: Label[];
   storageLimit: number;
   theme: 'dark' | 'light';
   searchQuery: string;
   activeFilter: string;
-  animationsEnabled: boolean;
   isMobile: boolean;
   isSidebarOpen: boolean;
   isNoteEditorOpen: boolean;
   isSettingsOpen: boolean;
   isManageDataOpen: boolean;
+  isSearchOpen: boolean;
   authInitialized: boolean;
   undoAction: {
     message: string;
@@ -64,17 +56,16 @@ interface AppState {
   setClipboardItems: (items: ClipboardItem[]) => void;
   addUploadingItem: (item: Partial<ClipboardItem>) => void;
   removeUploadingItem: (id: string) => void;
-  setLabels: (labels: Label[]) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   toggleTheme: () => void;
   setSearchQuery: (query: string) => void;
   setActiveFilter: (filter: string) => void;
-  setAnimationsEnabled: (enabled: boolean) => void;
   setIsMobile: (isMobile: boolean) => void;
   setIsSidebarOpen: (isOpen: boolean) => void;
   setIsNoteEditorOpen: (isOpen: boolean) => void;
   setIsSettingsOpen: (isOpen: boolean) => void;
   setIsManageDataOpen: (isOpen: boolean) => void;
+  setIsSearchOpen: (isOpen: boolean) => void;
   setUndoAction: (action: { message: string; action: () => void; id: string } | null) => void;
 }
 
@@ -84,17 +75,16 @@ export const useStore = create<AppState>((set) => ({
   isGuest: localStorage.getItem('is_guest') === 'true',
   clipboardItems: [],
   uploadingItems: [],
-  labels: [],
   storageLimit: 10 * 1024 * 1024,
   theme: (localStorage.getItem('theme') as 'dark' | 'light') || 'light',
   searchQuery: '',
   activeFilter: 'all',
-  animationsEnabled: JSON.parse(localStorage.getItem('animations_enabled') ?? 'true'),
   isMobile: false,
   isSidebarOpen: true,
   isNoteEditorOpen: false,
   isSettingsOpen: false,
   isManageDataOpen: false,
+  isSearchOpen: false,
   authInitialized: false,
   undoAction: null,
 
@@ -108,7 +98,6 @@ export const useStore = create<AppState>((set) => ({
   setClipboardItems: (clipboardItems) => set({ clipboardItems }),
   addUploadingItem: (item) => set((state) => ({ uploadingItems: [item, ...state.uploadingItems] })),
   removeUploadingItem: (id) => set((state) => ({ uploadingItems: state.uploadingItems.filter(i => i.id !== id) })),
-  setLabels: (labels) => set({ labels }),
   setTheme: (theme) => {
     localStorage.setItem('theme', theme);
     set({ theme });
@@ -120,15 +109,12 @@ export const useStore = create<AppState>((set) => ({
   }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setActiveFilter: (activeFilter) => set({ activeFilter }),
-  setAnimationsEnabled: (animationsEnabled) => {
-    localStorage.setItem('animations_enabled', JSON.stringify(animationsEnabled));
-    set({ animationsEnabled });
-  },
   setIsMobile: (isMobile) => set({ isMobile }),
   setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
   setIsNoteEditorOpen: (isNoteEditorOpen) => set({ isNoteEditorOpen }),
   setIsSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
   setIsManageDataOpen: (isManageDataOpen) => set({ isManageDataOpen }),
+  setIsSearchOpen: (isSearchOpen) => set({ isSearchOpen }),
   setUndoAction: (undoAction) => set({ undoAction }),
 }));
 
