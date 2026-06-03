@@ -1,9 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { 
-  LayoutGrid, 
-  StickyNote, 
-  Image as ImageIcon, 
+import {
+  LayoutGrid,
+  StickyNote,
   Bell,
   Sun,
   Moon,
@@ -20,7 +19,6 @@ const MobileNav = () => {
     { id: 'all', icon: LayoutGrid, label: 'Vault' },
     { id: 'notes', icon: StickyNote, label: 'Notes' },
     { id: 'pinned', icon: Star, label: 'Pinned' },
-    { id: 'images', icon: ImageIcon, label: 'Media' },
   ].filter(item => isMobile ? item.id !== 'pinned' : true); // Hide pinned on very small mobile nav to save space if needed, or just let them scroll. Actually, let's keep it but make it tighter.
 
   return (
@@ -44,8 +42,8 @@ const MobileNav = () => {
                 )}
                 <item.icon className={cn(
                   "h-5 w-5 transition-all duration-300 relative z-10",
-                  isActive 
-                    ? "text-blue-500 scale-110" 
+                  isActive
+                    ? "text-blue-500 scale-110"
                     : "text-text-secondary group-active:scale-90"
                 )} />
                 <span className={cn(
@@ -57,15 +55,15 @@ const MobileNav = () => {
               </button>
             );
           })}
-          
+
           <div className="w-px h-6 bg-border-primary mx-1 opacity-50" />
-          
+
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-3.5 sm:p-4 rounded-2xl transition-all relative overflow-hidden group bg-bg-primary border border-border-primary/50"
           >
             <Menu className="h-5 w-5 text-text-secondary relative z-10" />
-            <motion.div 
+            <motion.div
               className="absolute inset-0 bg-blue-500/0 group-active:bg-blue-500/10 transition-colors"
             />
           </button>
