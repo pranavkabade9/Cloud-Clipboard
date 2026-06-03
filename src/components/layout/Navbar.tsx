@@ -1,15 +1,8 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { 
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import {
   RotateCw,
-  Search, 
-  Bell, 
-  User, 
-  LogOut, 
-  Moon, 
-  Sun, 
-  Database, 
-  Settings, 
-  Globe, 
+  Search,
+  User,
   Command,
   Menu,
   X,
@@ -21,46 +14,63 @@ import {
   Sparkles,
   ClipboardPaste
 } from 'lucide-react';
-import { signOut } from '../../services/auth';
 import { handleGlobalPaste } from '../../services/pasteService';
 import { useStore } from '../../store/useStore';
 import { formatBytes, cn } from '../../utils/utils';
 import SettingsDropdown from './SettingsDropdown';
+import { useModal } from '../ui/ModalProvider';
 import { motion, AnimatePresence } from 'motion/react';
 
 const Navbar = () => {
-  const { 
-    user, 
-    userProfile, 
-    isGuest, 
-    storageLimit, 
-    theme, 
-    toggleTheme, 
-    searchQuery, 
+  const {
+    user,
+    userProfile,
+    isGuest,
+    theme,
+    searchQuery,
     setSearchQuery,
     isSidebarOpen,
     setIsSidebarOpen,
     isMobile,
     clipboardItems,
     setActiveFilter,
-    isSettingsOpen,
-    setIsSettingsOpen
+    activeFilter,
+    setIsSearchOpen
   } = useStore();
-  
+
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const { openModal } = useModal();
   const searchRef = useRef<HTMLDivElement>(null);
-  
-  const storageUsed = userProfile?.storageUsed || 0;
-  const storagePercentage = (storageUsed / storageLimit) * 100;
 
   const placeholders = [
     "Search clips, notes, snippets...",
-    "Find your screenshots...",
+    "Find saved images...",
     "Search everything...",
     "Paste or search instantly..."
   ];
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const closeSearch = useCallback((clear = false) => {
+    if (clear) setSearchQuery('');
+    setIsSearchOpen(false);
+    setIsSearchFocused(false);
+    searchInputRef.current?.blur();
+  }, [setSearchQuery, setIsSearchOpen]);
+
+  const openSettingsModal = useCallback(() => {
+    closeSearch(true);
+    useStore.getState().setIsManageDataOpen(false);
+    openModal({
+      id: 'profile-settings',
+      title: 'Profile Settings',
+      size: 'sm',
+      hideCloseButton: true,
+      contentClassName: 'max-h-[min(820px,calc(100dvh-24px))]',
+      content: ({ close }) => <SettingsDropdown onClose={close} />,
+      onClose: () => useStore.getState().setIsManageDataOpen(false)
+    });
+  }, [closeSearch, openModal]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,14 +79,25 @@ const Navbar = () => {
         searchInputRef.current?.focus();
       }
       if (e.key === 'Escape' && isSearchFocused) {
-        setIsSearchFocused(false);
-        setSearchQuery('');
-        searchInputRef.current?.blur();
+        closeSearch(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchFocused, setSearchQuery]);
+  }, [isSearchFocused, closeSearch]);
+
+  useEffect(() => {
+    if (!isSearchFocused) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!searchRef.current?.contains(event.target as Node)) closeSearch();
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [isSearchFocused, closeSearch]);
+
+  useEffect(() => {
+    if (isSearchFocused) closeSearch();
+  }, [activeFilter]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -88,19 +109,20 @@ const Navbar = () => {
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
     const query = searchQuery.toLowerCase();
-    return clipboardItems.filter(item => 
-      item.content?.toLowerCase().includes(query) || 
+    return clipboardItems.filter(item =>
+      item.content?.toLowerCase().includes(query) ||
       item.type.toLowerCase().includes(query)
     ).slice(0, 5);
   }, [searchQuery, clipboardItems]);
 
-  const recentItems = clipboardItems.slice(0, 4);
-  const pinnedItems = clipboardItems.filter(i => i.pinned).slice(0, 2);
+  const recentItems = clipboardItems.filter(i => !i.deleted && !i.archived).slice(0, 4);
+  const pinnedItems = clipboardItems.filter(i => i.pinned && !i.deleted).slice(0, 3);
+  const recentNotes = clipboardItems.filter(i => i.type === 'text' && !i.deleted && !i.archived).slice(0, 3);
 
   return (
     <header className="fixed top-0 right-0 left-0 z-40 flex items-center justify-between h-16 sm:h-20 px-3 sm:px-4 lg:px-8 border-b border-border-primary bg-bg-secondary/80 backdrop-blur-3xl font-['Poppins']">
       <div className="flex items-center gap-2 sm:gap-4 lg:w-64">
-        <button 
+        <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className={cn(
             "p-2.5 sm:p-3 rounded-2xl transition-all active:scale-90 border border-border-primary bg-bg-primary text-text-primary hover:border-blue-500/50",
@@ -109,9 +131,9 @@ const Navbar = () => {
         >
           {isSidebarOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
         </button>
-        
+
         {(isMobile && !isSidebarOpen) && (
-          <div 
+          <div
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="flex items-center gap-2 cursor-pointer group"
           >
@@ -137,12 +159,12 @@ const Navbar = () => {
               isSearchFocused ? "text-blue-500" : "text-text-secondary"
             )} />
           </div>
-          <input 
+          <input
             ref={searchInputRef}
-            type="text" 
+            type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setIsSearchFocused(true)}
+            onFocus={() => { setIsSearchFocused(true); setIsSearchOpen(true); }}
             placeholder={isMobile && !isSearchFocused ? "Search..." : placeholders[placeholderIndex]}
             className={cn(
               "w-full h-11 pr-12 rounded-2xl border border-border-primary bg-input-bg text-text-primary placeholder-text-muted/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold text-sm",
@@ -150,12 +172,10 @@ const Navbar = () => {
             )}
           />
           {(searchQuery || isSearchFocused) && (
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation();
-                setSearchQuery('');
-                setIsSearchFocused(false);
-                searchInputRef.current?.blur();
+                closeSearch(true);
               }}
               className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-xl hover:bg-bg-primary text-text-secondary transition-all"
             >
@@ -176,7 +196,7 @@ const Navbar = () => {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute top-full left-0 right-0 mt-2 p-4 rounded-[32px] border border-border-primary bg-bg-secondary shadow-2xl backdrop-blur-3xl z-[100] max-h-[480px] overflow-y-auto custom-scrollbar"
+              className="absolute top-full left-1/2 mt-2 w-[calc(100%-16px)] max-w-lg -translate-x-1/2 p-4 rounded-[28px] border border-border-primary bg-bg-secondary/95 shadow-2xl backdrop-blur-3xl z-[100] max-h-[min(480px,calc(100dvh-96px))] overflow-y-auto custom-scrollbar"
             >
               <div className="space-y-6">
                 {searchQuery && searchResults.length > 0 && (
@@ -187,11 +207,11 @@ const Navbar = () => {
                     </div>
                     <div className="grid grid-cols-1 gap-2">
                        {searchResults.map(item => (
-                         <button 
+                         <button
                            key={item.id}
                            onClick={() => {
                              setSearchQuery(item.content || '');
-                             setIsSearchFocused(false);
+                             closeSearch();
                            }}
                            className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:bg-bg-secondary border border-transparent hover:border-border-primary transition-all text-left group"
                          >
@@ -203,7 +223,7 @@ const Navbar = () => {
                                {item.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <StickyNote className="h-4 w-4" />}
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-xs font-bold text-text-primary line-clamp-1">{item.content || 'Stored Media'}</span>
+                              <span className="text-xs font-bold text-text-primary line-clamp-1">{item.content || 'Saved Image'}</span>
                               <span className="text-[8px] font-bold text-text-muted uppercase tracking-wider">{item.type}</span>
                             </div>
                          </button>
@@ -220,11 +240,11 @@ const Navbar = () => {
                     </div>
                     <div className="grid grid-cols-1 gap-2">
                        {pinnedItems.map(item => (
-                         <button 
+                         <button
                            key={item.id}
                            onClick={() => {
                              setSearchQuery(item.content || '');
-                             setIsSearchFocused(false);
+                             closeSearch();
                            }}
                            className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:border-border-hover border border-transparent transition-all text-left"
                          >
@@ -245,11 +265,11 @@ const Navbar = () => {
                   </div>
                   <div className="grid grid-cols-1 gap-2">
                      {recentItems.map(item => (
-                       <button 
+                       <button
                          key={item.id}
                          onClick={() => {
                            setSearchQuery(item.content || '');
-                           setIsSearchFocused(false);
+                           closeSearch();
                          }}
                          className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:border-border-hover border border-transparent transition-all text-left"
                        >
@@ -259,26 +279,52 @@ const Navbar = () => {
                           )}>
                              {item.type === 'image' ? <ImageIcon className="h-4 w-4" /> : <StickyNote className="h-4 w-4" />}
                           </div>
-                          <span className="text-xs font-medium text-text-primary line-clamp-1">{item.content || 'Stored Media'}</span>
+                          <span className="text-xs font-medium text-text-primary line-clamp-1">{item.content || 'Saved Image'}</span>
                        </button>
                      ))}
                   </div>
                 </div>
 
+                {!searchQuery && recentNotes.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 px-2 mb-3">
+                      <StickyNote className="h-3 w-3 text-emerald-500" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Recent Notes</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {recentNotes.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setSearchQuery(item.content || '');
+                            closeSearch();
+                          }}
+                          className="flex items-center gap-3 p-3 rounded-2xl bg-bg-primary hover:border-border-hover border border-transparent transition-all text-left"
+                        >
+                          <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <StickyNote className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-medium text-text-primary line-clamp-1">{item.content || 'Untitled Note'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                   <button 
-                    onClick={() => { setActiveFilter('notes'); setIsSearchFocused(false); }}
+                   <button
+                    onClick={() => { setActiveFilter('notes'); closeSearch(); }}
                     className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 text-blue-500 font-bold text-[10px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
                    >
                       <StickyNote className="h-3.5 w-3.5" />
                       Browse Notes
                    </button>
-                   <button 
-                    onClick={() => { setActiveFilter('images'); setIsSearchFocused(false); }}
+                   <button
+                    onClick={() => { setActiveFilter('all'); closeSearch(); }}
                     className="flex items-center gap-2 p-3 rounded-xl bg-purple-500/10 text-purple-500 font-bold text-[10px] uppercase tracking-widest hover:bg-purple-500 hover:text-white transition-all"
                    >
-                      <ImageIcon className="h-3.5 w-3.5" />
-                      Media Gallery
+                      <Zap className="h-3.5 w-3.5" />
+                      All Clips
                    </button>
                 </div>
               </div>
@@ -288,7 +334,7 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-2 lg:w-80 justify-end">
-        <button 
+        <button
           onClick={handleGlobalPaste}
           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20 shadow-sm group"
           title="Paste from Clipboard"
@@ -298,8 +344,8 @@ const Navbar = () => {
         </button>
 
         <div className="relative">
-          <button 
-            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          <button
+            onClick={openSettingsModal}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-[22px] border border-border-primary bg-bg-primary shadow-sm hover:border-blue-500/30 transition-all outline-none",
               isMobile ? "pl-2 pr-1" : "pl-4 pr-1.5"
@@ -314,13 +360,13 @@ const Navbar = () => {
                </span>
             </div>
             {user?.photoURL ? (
-              <img 
-                src={user.photoURL} 
+              <img
+                src={user.photoURL}
                 className={cn(
                   "rounded-[14px] object-cover border border-border-primary/50",
                   isMobile ? "h-8 w-8" : "h-10 w-10"
-                )} 
-                alt="Profile" 
+                )}
+                alt="Profile"
               />
             ) : (
               <div className={cn(
@@ -331,17 +377,9 @@ const Navbar = () => {
               </div>
             )}
           </button>
-          <SettingsDropdown isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
         </div>
       </div>
 
-      {/* Click outside search to close */}
-      {isSearchFocused && (
-        <div 
-          className="fixed inset-0 -z-10" 
-          onClick={() => setIsSearchFocused(false)} 
-        />
-      )}
     </header>
   );
 };

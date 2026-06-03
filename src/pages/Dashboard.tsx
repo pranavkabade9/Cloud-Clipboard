@@ -19,20 +19,21 @@ import { handleGlobalPaste as triggerPasteService } from '../services/pasteServi
 import { handleImageUpload } from '../services/uploadService';
 
 const Dashboard = () => {
-  const { 
-    user, 
-    isGuest, 
-    theme, 
-    setClipboardItems, 
-    userProfile, 
-    storageLimit, 
-    isMobile, 
+  const {
+    user,
+    isGuest,
+    theme,
+    setClipboardItems,
+    userProfile,
+    storageLimit,
+    isMobile,
     setIsMobile,
     isSidebarOpen,
     setIsSidebarOpen,
     activeFilter,
     isNoteEditorOpen,
-    setIsNoteEditorOpen
+    setIsNoteEditorOpen,
+    isSearchOpen
   } = useStore();
   const [isDragging, setIsDragging] = useState(false);
 
@@ -69,7 +70,7 @@ const Dashboard = () => {
 
   const saveToClipboard = async (data: any) => {
     const itemSize = data.type === 'text' ? new Blob([data.content]).size : data.size || 0;
-    
+
     if (user && userProfile) {
       if (userProfile.storageUsed + itemSize > storageLimit) {
         toast.error("Storage limit reached!", {
@@ -125,10 +126,10 @@ const Dashboard = () => {
   const handleGlobalPaste = useCallback(async (e: ClipboardEvent) => {
     // Avoid hijacking normal input/textarea pasting
     const targetTagName = (e.target as HTMLElement)?.tagName;
-    const isEditing = ['INPUT', 'TEXTAREA'].includes(targetTagName) || 
+    const isEditing = ['INPUT', 'TEXTAREA'].includes(targetTagName) ||
                      (e.target as HTMLElement)?.isContentEditable ||
                      (e.target as HTMLElement)?.closest('.note-editor-container');
-                     
+
     if (isEditing) {
       console.log(`[Dashboard Ctrl+V Info] User is actively typing inside an input/textarea element. Allowing native browser paste.`);
       return;
@@ -161,8 +162,8 @@ const Dashboard = () => {
           handleImageFile(file);
         }, 0);
       }
-    } 
-    
+    }
+
     // 2. Text Capture
     if (!handled) {
       const text = clipboardData.getData('text/plain') || clipboardData.getData('text');
@@ -220,7 +221,7 @@ const Dashboard = () => {
       const fetchItems = (useOrderBy = true): (() => void) => {
         let itemsQuery: Query;
         const clipsRef = collection(db, 'users', user.uid, 'clips');
-        
+
         if (useOrderBy) {
           itemsQuery = query(
             clipsRef,
@@ -231,15 +232,15 @@ const Dashboard = () => {
         }
 
         console.log(`[Realtime Sync] Setting up Firestore listener on path: 'users/${user.uid}/clips' (Ordered: ${useOrderBy})`);
-        
+
         const unsub = onSnapshot(itemsQuery, { includeMetadataChanges: true }, (snapshot: any) => {
           console.log(`[Realtime Sync] Firestore update triggered. Document count received: ${snapshot.docs.length}. Metadata changes present: ${snapshot.metadata.hasPendingWrites ? 'Local Optimistic Write' : 'Cloud Sync Complete'}`);
-          
-          const items = snapshot.docs.map((doc: any) => ({ 
-            id: doc.id, 
-            ...doc.data({ serverTimestamps: 'estimate' }) 
+
+          const items = snapshot.docs.map((doc: any) => ({
+            id: doc.id,
+            ...doc.data({ serverTimestamps: 'estimate' })
           } as any));
-          
+
           if (!useOrderBy) {
             console.log("[Realtime Sync] Sorting items locally on client side...");
             items.sort((a, b) => {
@@ -248,7 +249,7 @@ const Dashboard = () => {
               return tb - ta;
             });
           }
-          
+
           console.log(`[Realtime Sync] Hydrating Zustand store with ${items.length} clips.`);
           setClipboardItems(items);
         }, (error) => {
@@ -276,7 +277,7 @@ const Dashboard = () => {
   }, [user, isGuest]);
 
   return (
-    <div 
+    <div
       className="flex h-screen overflow-hidden transition-colors duration-500 font-['Poppins'] select-none lg:select-text bg-bg-primary text-text-primary"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -299,7 +300,7 @@ const Dashboard = () => {
       </AnimatePresence>
 
       {isMobile && isSidebarOpen && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -307,18 +308,27 @@ const Dashboard = () => {
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[105]"
         />
       )}
-      
+
       <main className="relative flex-1 flex flex-col min-w-0 transition-all duration-500 overflow-hidden">
+        <AnimatePresence>
+          {isSearchOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-30 pointer-events-none bg-bg-primary/10 backdrop-blur-[3px]"
+            />
+          )}
+        </AnimatePresence>
         <Navbar />
-        
+
         <div className="flex-1 overflow-y-auto px-4 lg:px-8 pt-20 sm:pt-24 lg:pt-28 pb-40 lg:pb-12 custom-scrollbar">
           <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">
-                  {activeFilter === 'all' ? 'Unified Stream' : 
+                  {activeFilter === 'all' ? 'Unified Stream' :
                   activeFilter === 'notes' ? 'Text Collection' :
-                  activeFilter === 'images' ? 'Media Gallery' :
                   activeFilter === 'bin' ? 'Cleanup required' : 'Collection'}
                 </span>
                 <h1 className="text-3xl lg:text-4xl font-black text-text-primary tracking-tight capitalize">
@@ -341,7 +351,7 @@ const Dashboard = () => {
 
             <AnimatePresence>
               {isNoteEditorOpen && (
-                <NoteEditor 
+                <NoteEditor
                   isOpen={isNoteEditorOpen}
                   initialMode={editorMode}
                   onClose={() => {
@@ -371,17 +381,17 @@ const Dashboard = () => {
                   className="group relative flex items-center justify-center gap-3 w-full max-w-[280px] px-8 py-5 rounded-full bg-bg-secondary border border-blue-500/20 shadow-[0_12px_44px_rgba(59,130,246,0.15)] overflow-hidden transition-all hover:shadow-[0_12px_44px_rgba(59,130,246,0.3)] backdrop-blur-md"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                  
+
                   <Clipboard className="h-5 w-5 text-blue-500 relative z-10" />
                   <span className="text-sm font-black text-text-primary relative z-10 tracking-widest uppercase">Paste from Clipboard</span>
-                  
+
                   {/* Subtle Glow */}
                   <div className="absolute -right-4 -top-4 h-16 w-16 bg-blue-500/10 blur-[32px] rounded-full group-hover:bg-blue-500/20 transition-all" />
                 </motion.button>
                 <ClipboardInput onSave={saveToClipboard} />
               </div>
             )}
-            
+
             <ClipboardGrid />
           </div>
         </div>
@@ -390,7 +400,7 @@ const Dashboard = () => {
 
         <AnimatePresence>
           {isDragging && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

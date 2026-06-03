@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Plus, 
-  StickyNote, 
-  Image as ImageIcon, 
-  Zap, 
-  Settings, 
-  LogOut, 
+import {
+  Plus,
+  StickyNote,
+  Image as ImageIcon,
+  Zap,
+  Settings,
+  LogOut,
   Clipboard,
   X,
   Loader2
@@ -18,13 +18,12 @@ import { toast } from 'sonner';
 import { handleGlobalPaste } from '../../services/pasteService';
 
 const FloatingHub = () => {
-  const { 
-    user, 
-    isGuest, 
-    theme, 
+  const {
+    user,
+    isGuest,
+    theme,
     setIsNoteEditorOpen,
-    isMobile,
-    setIsSettingsOpen
+    isMobile
   } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
@@ -45,7 +44,7 @@ const FloatingHub = () => {
   }, [user, isGuest]);
 
   const actions = [
-    { 
+    {
       id: 'paste',
       icon: isPasting ? Loader2 : Clipboard,
       label: 'Paste Now',
@@ -54,10 +53,10 @@ const FloatingHub = () => {
       mobileOnly: true,
       action: handlePaste
     },
-    { 
-      id: 'note', 
-      icon: StickyNote, 
-      label: 'New Snippet', 
+    {
+      id: 'note',
+      icon: StickyNote,
+      label: 'New Snippet',
       color: 'bg-blue-500',
       desc: 'Instant text fragment',
       action: () => {
@@ -65,10 +64,10 @@ const FloatingHub = () => {
         setIsOpen(false);
       }
     },
-    { 
-      id: 'upload', 
-      icon: ImageIcon, 
-      label: 'Upload Media', 
+    {
+      id: 'upload',
+      icon: ImageIcon,
+      label: 'Upload Image',
       color: 'bg-indigo-500',
       desc: 'Capture reference',
       action: () => {
@@ -96,11 +95,11 @@ const FloatingHub = () => {
       "fixed z-[120] font-['Poppins']",
       isMobile ? "bottom-24 right-6" : "bottom-8 right-8"
     )}>
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        accept="image/*" 
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
         onChange={handleFileChange}
       />
 
@@ -126,7 +125,7 @@ const FloatingHub = () => {
                 <div className="px-3 py-2 mb-2 border-b border-border-primary/50">
                   <span className="text-[9px] font-black uppercase tracking-[0.3em] text-text-secondary/60">Quick Actions</span>
                 </div>
-                
+
                 {actions.map((action) => (
                   <button
                     key={action.id}
@@ -145,9 +144,9 @@ const FloatingHub = () => {
                     </div>
                   </button>
                 ))}
-                
+
                 {!isGuest && (
-                  <button 
+                  <button
                   onClick={() => signOut()}
                   className="mt-2 flex items-center gap-3 p-3 rounded-2xl text-red-500 hover:bg-red-500/10 transition-all text-left group"
                   >
@@ -194,7 +193,7 @@ const FloatingHub = () => {
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         {/* Subtle Glow */}
         {!isOpen && (
            <div className="absolute inset-0 rounded-2xl bg-blue-400/20 blur-xl animate-pulse -z-10" />
