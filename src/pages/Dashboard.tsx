@@ -8,7 +8,7 @@ import ClipboardGrid from '../components/clipboard/ClipboardGrid';
 import NoteEditor from '../components/clipboard/NoteEditor';
 import { useStore } from '../store/useStore';
 import { db, auth, OperationType, handleFirestoreError, storage } from '../services/firebase';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, increment, deleteDoc, Query } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, setDoc, doc, increment, deleteDoc, Query } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import { toast } from 'sonner';
@@ -89,10 +89,10 @@ const Dashboard = () => {
           pinned: data.pinned || false,
         };
         await addDoc(collection(db, 'users', user.uid, 'clips'), itemData);
-        await updateDoc(doc(db, 'users', user.uid), {
+        await setDoc(doc(db, 'users', user.uid), {
           storageUsed: increment(itemSize),
           updatedAt: serverTimestamp(),
-        });
+        }, { merge: true });
         toast.success("Snippet saved");
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/clips`);
