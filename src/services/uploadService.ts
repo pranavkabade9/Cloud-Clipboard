@@ -74,7 +74,7 @@ export const handleImageUpload = async ({
   });
 
   const loadingToast = toast.loading("Processing image...", {
-    description: "Optimizing media."
+    description: "Optimizing clip."
   });
 
   try {

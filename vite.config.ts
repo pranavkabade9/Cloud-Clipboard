@@ -12,15 +12,19 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'offline.html'],
         manifest: {
           name: 'Cloud Clipboard',
           short_name: 'CloudClip',
-          description: 'A futuristic universal clipboard manager to instantly save, organize, and sync text and screenshots across devices.',
+          description: 'A mobile-first universal clipboard app to instantly save, organize, and sync clips across devices.',
           theme_color: '#3b82f6',
           background_color: '#0f172a',
           display: 'standalone',
+          display_override: ['standalone', 'window-controls-overlay'],
+          start_url: '/',
+          scope: '/',
           orientation: 'portrait',
+          categories: ['productivity', 'utilities'],
           icons: [
             {
               src: '/pwa-512x512.png',
@@ -42,6 +46,7 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          navigateFallback: '/index.html',
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
