@@ -39,6 +39,7 @@ interface AppState {
   isMobile: boolean;
   isSidebarOpen: boolean;
   isNoteEditorOpen: boolean;
+  isSettingsOpen: boolean;
   isManageDataOpen: boolean;
   isSearchOpen: boolean;
   authInitialized: boolean;
@@ -62,6 +63,7 @@ interface AppState {
   setIsMobile: (isMobile: boolean) => void;
   setIsSidebarOpen: (isOpen: boolean) => void;
   setIsNoteEditorOpen: (isOpen: boolean) => void;
+  setIsSettingsOpen: (isOpen: boolean) => void;
   setIsManageDataOpen: (isOpen: boolean) => void;
   setIsSearchOpen: (isOpen: boolean) => void;
   setUndoAction: (action: { message: string; action: () => void; id: string } | null) => void;
@@ -80,6 +82,7 @@ export const useStore = create<AppState>((set) => ({
   isMobile: false,
   isSidebarOpen: true,
   isNoteEditorOpen: false,
+  isSettingsOpen: false,
   isManageDataOpen: false,
   isSearchOpen: false,
   authInitialized: false,
@@ -109,6 +112,7 @@ export const useStore = create<AppState>((set) => ({
   setIsMobile: (isMobile) => set({ isMobile }),
   setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
   setIsNoteEditorOpen: (isNoteEditorOpen) => set({ isNoteEditorOpen }),
+  setIsSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
   setIsManageDataOpen: (isManageDataOpen) => set({ isManageDataOpen }),
   setIsSearchOpen: (isSearchOpen) => set({ isSearchOpen }),
   setUndoAction: (undoAction) => set({ undoAction }),

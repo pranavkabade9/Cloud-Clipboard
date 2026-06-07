@@ -1,13 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  LayoutGrid,
-  Type,
-  Bell,
-  Star,
-  Clock,
-  Archive,
-  Trash2,
+import { 
+  LayoutGrid, 
+  Type, 
+  Bell, 
+  Image as ImageIcon, 
+  Star, 
+  Clock, 
+  Archive, 
+  Trash2, 
   ChevronLeft,
   Settings,
   HardDrive,
@@ -23,8 +24,8 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
     onClick={() => setActiveFilter(item.id)}
     className={cn(
       "group relative flex items-center w-full gap-3 px-4 py-3 rounded-2xl transition-all duration-300",
-      activeFilter === item.id
-        ? "dark:bg-blue-500/10 bg-blue-50 text-blue-600 dark:text-blue-400 shadow-sm"
+      activeFilter === item.id 
+        ? "dark:bg-blue-500/10 bg-blue-50 text-blue-600 dark:text-blue-400 shadow-sm" 
         : "text-text-secondary hover:bg-bg-primary hover:text-text-primary"
     )}
   >
@@ -32,7 +33,7 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
       "h-5 w-5 transition-transform duration-300 group-hover:scale-110 shrink-0",
       activeFilter === item.id && "scale-110"
     )} />
-
+    
       {!isOpen && (
         <div className="absolute left-full ml-4 px-3 py-1.5 rounded-lg bg-bg-secondary text-text-primary text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[100] shadow-xl border border-border-primary">
           {item.label}
@@ -42,7 +43,7 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
 
     <AnimatePresence>
       {isOpen && (
-        <motion.span
+        <motion.span 
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -10 }}
@@ -54,7 +55,7 @@ const NavButton = ({ item, activeFilter, setActiveFilter, isOpen }: any) => (
     </AnimatePresence>
 
     {activeFilter === item.id && (
-      <motion.div
+      <motion.div 
         layoutId="active-pill"
         className="absolute left-0 w-1 h-6 bg-blue-500 rounded-r-full"
       />
@@ -72,6 +73,7 @@ const Sidebar = () => {
   const primaryItems = [
     { id: 'all', icon: LayoutGrid, label: 'Everything' },
     { id: 'notes', icon: StickyNote, label: 'Notes' },
+    { id: 'images', icon: ImageIcon, label: 'Media Vault' },
   ];
 
   const secondaryItems = [
@@ -96,7 +98,7 @@ const Sidebar = () => {
         )}
       >
         <div className="flex items-center h-16 sm:h-20 px-6 justify-between border-b border-border-primary/50">
-          <div
+          <div 
             onClick={() => !isMobile && setIsSidebarOpen(!isSidebarOpen)}
             className={cn("flex items-center gap-3", !isMobile && "cursor-pointer group")}
           >
@@ -104,9 +106,9 @@ const Sidebar = () => {
               <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
             {isSidebarOpen && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
                 className="ml-2"
               >
                 <span className="text-xl font-black tracking-tighter text-text-primary block leading-tight">Vault</span>
@@ -115,7 +117,7 @@ const Sidebar = () => {
             )}
           </div>
           {isMobile && isSidebarOpen && (
-            <button
+            <button 
               onClick={() => setIsSidebarOpen(false)}
               className="p-3 rounded-2xl bg-bg-primary border border-border-primary text-text-secondary"
             >
@@ -127,12 +129,12 @@ const Sidebar = () => {
       <div className="flex-1 overflow-y-auto px-4 py-8 space-y-8 custom-scrollbar">
         <div className="space-y-1">
           {primaryItems.map(item => (
-            <NavButton
-              key={item.id}
-              item={item}
-              activeFilter={activeFilter}
-              setActiveFilter={setActiveFilter}
-              isOpen={isSidebarOpen}
+            <NavButton 
+              key={item.id} 
+              item={item} 
+              activeFilter={activeFilter} 
+              setActiveFilter={setActiveFilter} 
+              isOpen={isSidebarOpen} 
             />
           ))}
         </div>
@@ -145,12 +147,12 @@ const Sidebar = () => {
           )}
           <div className="space-y-1">
             {secondaryItems.map(item => (
-              <NavButton
-                key={item.id}
-                item={item}
-                activeFilter={activeFilter}
-                setActiveFilter={setActiveFilter}
-                isOpen={isSidebarOpen}
+              <NavButton 
+                key={item.id} 
+                item={item} 
+                activeFilter={activeFilter} 
+                setActiveFilter={setActiveFilter} 
+                isOpen={isSidebarOpen} 
               />
             ))}
           </div>
@@ -164,12 +166,12 @@ const Sidebar = () => {
           )}
           <div className="space-y-1">
             {managementItems.map(item => (
-              <NavButton
-                key={item.id}
-                item={item}
-                activeFilter={activeFilter}
-                setActiveFilter={setActiveFilter}
-                isOpen={isSidebarOpen}
+              <NavButton 
+                key={item.id} 
+                item={item} 
+                activeFilter={activeFilter} 
+                setActiveFilter={setActiveFilter} 
+                isOpen={isSidebarOpen} 
               />
             ))}
           </div>
@@ -179,8 +181,8 @@ const Sidebar = () => {
       <div className="p-6 space-y-6 mt-auto">
         {isMobile && !isSidebarOpen && (
            <div className="flex items-center gap-3">
-             <button
-              onClick={() => setIsSidebarOpen(true)}
+             <button 
+              onClick={() => setIsSidebarOpen(true)} 
               className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
              >
                <ChevronLeft className="h-5 w-5 transition-transform duration-500 relative z-10 rotate-180" />
@@ -190,8 +192,8 @@ const Sidebar = () => {
         )}
         {!isMobile && !isSidebarOpen && (
            <div className="flex items-center gap-3">
-             <button
-              onClick={() => setIsSidebarOpen(true)}
+             <button 
+              onClick={() => setIsSidebarOpen(true)} 
               className="flex-1 flex items-center justify-center p-3.5 rounded-2xl bg-bg-primary border border-border-primary hover:border-blue-500/30 text-text-secondary hover:text-blue-500 transition-all group overflow-hidden relative shadow-sm"
              >
                <ChevronLeft className="h-5 w-5 transition-transform duration-500 relative z-10 rotate-180" />

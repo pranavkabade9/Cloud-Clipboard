@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
+import { 
   Archive,
   Trash2,
   Maximize2,
@@ -19,12 +19,12 @@ import {
   Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  doc,
-  deleteDoc,
-  updateDoc,
+import { 
+  doc, 
+  deleteDoc, 
+  updateDoc, 
   setDoc,
-  increment,
+  increment, 
   serverTimestamp,
   collection,
   addDoc
@@ -33,7 +33,6 @@ import { db, storage, OperationType, handleFirestoreError } from '../../services
 import { useStore } from '../../store/useStore';
 import { cn, formatBytes, getRelativeTime } from '../../utils/utils';
 import DrawingCanvas from '../drawing/DrawingCanvas';
-import { useModal } from '../ui/ModalProvider';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 
@@ -43,165 +42,14 @@ interface ClipboardCardProps {
   item: any;
 }
 
-
-interface ExpandedClipModalProps {
-  item: any;
-  imageUrl?: string;
-  relativeTime: string;
-  onUpdate: (data: any) => Promise<void>;
-  onDownload: () => void;
-  onCopy: () => void;
-  onRestore: (event: React.MouseEvent) => void;
-  onAnnotate: () => void;
-  onClose: () => void;
-}
-
-const ExpandedClipModal = ({ item, imageUrl, relativeTime, onUpdate, onDownload, onCopy, onRestore, onAnnotate, onClose }: ExpandedClipModalProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(item.content || '');
-
-  const handleSaveEdit = async () => {
-    await onUpdate({ content: editContent, updatedAt: serverTimestamp() });
-    setIsEditing(false);
-    toast.success('Clip updated');
-  };
-
-  return (
-    <div className="flex h-full flex-col gap-5 p-4 sm:p-6 lg:flex-row lg:gap-8 lg:p-8">
-      <button
-        onClick={onClose}
-        aria-label="Close expanded view"
-        className="absolute right-4 top-4 z-30 rounded-2xl border border-border-primary bg-bg-primary/80 p-3 text-text-primary shadow-xl backdrop-blur-xl transition-all hover:scale-105 hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-      >
-        <X className="h-5 w-5" />
-      </button>
-
-      <div className={cn(
-        'relative flex min-h-[55dvh] flex-1 flex-col overflow-hidden rounded-[28px] border border-border-primary bg-bg-secondary shadow-2xl sm:rounded-[36px]',
-        isEditing && 'ring-2 ring-blue-500'
-      )}>
-        {item.type === 'image' ? (
-          <img src={imageUrl} className="h-full w-full object-contain bg-bg-primary" alt="Expanded clip" referrerPolicy="no-referrer" />
-        ) : item.checklist ? (
-          <div className="h-full overflow-y-auto p-6 sm:p-10 custom-scrollbar">
-            <div className="space-y-4">
-              {item.checklist.filter((i: any) => !i.completed).map((task: any) => (
-                <button
-                  key={task.id}
-                  className="group flex w-full items-center gap-4 rounded-2xl p-2 text-left transition-all hover:bg-bg-primary"
-                  onClick={async (event) => {
-                    event.stopPropagation();
-                    const newChecklist = item.checklist.map((i: any) => i.id === task.id ? { ...i, completed: true } : i);
-                    await onUpdate({ checklist: newChecklist });
-                    toast.success('Task completed');
-                  }}
-                >
-                  <div className="h-6 w-6 rounded-lg border-2 border-border-primary transition-colors group-hover:border-blue-500" />
-                  <span className="text-lg font-medium text-text-primary sm:text-xl">{task.text}</span>
-                </button>
-              ))}
-            </div>
-            {item.checklist.some((i: any) => i.completed) && (
-              <div className="mt-8 border-t border-border-primary pt-8">
-                <p className="mb-4 text-[10px] font-black uppercase tracking-[0.25em] text-text-muted">Completed Tasks</p>
-                <div className="space-y-3 opacity-60">
-                  {item.checklist.filter((i: any) => i.completed).map((task: any) => (
-                    <div key={task.id} className="flex items-center gap-4 p-2">
-                      <Check className="h-5 w-5 text-blue-500" />
-                      <span className="text-base font-medium text-text-muted line-through">{task.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="h-full overflow-y-auto p-6 sm:p-10 custom-scrollbar">
-            {isEditing ? (
-              <textarea
-                value={editContent}
-                onChange={(event) => setEditContent(event.target.value)}
-                className="h-full min-h-[52dvh] w-full resize-none border-none bg-transparent text-lg font-medium leading-relaxed text-text-primary outline-none focus:ring-0 sm:text-2xl"
-                placeholder="Edit your clip..."
-              />
-            ) : (
-              <div className="whitespace-pre-wrap text-lg font-medium leading-relaxed text-text-primary sm:text-2xl">{item.content}</div>
-            )}
-          </div>
-        )}
-
-        {!item.deleted && (
-          <div className="absolute bottom-4 right-4 flex flex-wrap items-center justify-end gap-3 sm:bottom-6 sm:right-6">
-            {item.type === 'text' && (
-              <button
-                onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)}
-                className={cn(
-                  'flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black shadow-2xl transition-all active:scale-95',
-                  isEditing ? 'bg-green-500 text-white hover:bg-green-600' : 'border border-border-primary bg-bg-primary/70 text-text-primary backdrop-blur-xl hover:bg-bg-primary'
-                )}
-              >
-                {isEditing ? <Check className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-                {isEditing ? 'Save Changes' : 'Edit Note'}
-              </button>
-            )}
-            {item.type === 'image' && (
-              <button onClick={onAnnotate} className="flex items-center gap-2 rounded-2xl bg-blue-500 px-5 py-3 text-xs font-black text-white shadow-2xl transition-all hover:bg-blue-600 active:scale-95">
-                <Pencil className="h-4 w-4" />
-                Draw / Annotate
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <aside className="flex w-full flex-col gap-5 pb-2 lg:w-80">
-        <div className="space-y-2 pr-14 lg:pr-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500">Expanded View</p>
-          <h2 className="text-2xl font-black tracking-tight text-text-primary lg:text-3xl">Snippet Insights</h2>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Captured {relativeTime}</p>
-        </div>
-
-        <div className="space-y-3 rounded-[28px] border border-border-primary bg-bg-primary p-5 shadow-xl">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Digital Weight</span>
-            <span className="text-sm font-black text-text-primary">{formatBytes(item.size || 0)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Item Type</span>
-            <span className="text-sm font-black uppercase text-text-primary">{item.type}</span>
-          </div>
-        </div>
-
-        <div className="mt-auto space-y-3">
-          {!item.deleted ? (
-            <>
-              <button onClick={onDownload} className="flex w-full items-center justify-center gap-3 rounded-[22px] border border-border-primary bg-bg-primary py-4 text-xs font-black text-text-primary transition-all hover:scale-[1.02] hover:bg-text-primary hover:text-bg-primary">
-                <Download className="h-5 w-5" />
-                Download Original
-              </button>
-              <button onClick={onCopy} className="flex w-full items-center justify-center gap-3 rounded-[22px] border border-blue-400/20 bg-blue-500 py-4 text-xs font-black text-white shadow-2xl transition-all hover:scale-[1.02]">
-                <Copy className="h-5 w-5" />
-                Copy Clip
-              </button>
-            </>
-          ) : (
-            <button onClick={onRestore} className="flex w-full items-center justify-center gap-3 rounded-[22px] border border-green-400/20 bg-green-500 py-4 text-xs font-black text-white shadow-2xl transition-all hover:scale-[1.02]">
-              <RotateCcw className="h-5 w-5" />
-              Restore Item
-            </button>
-          )}
-        </div>
-      </aside>
-    </div>
-  );
-};
-
 const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   const { user, isGuest, isMobile, setUndoAction } = useStore();
-  const { openModal } = useModal();
   const [isCopied, setIsCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(item.content || '');
 
   const performUpdate = useCallback(async (updateData: any) => {
     if (user) {
@@ -271,7 +119,8 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     }
   }, [item.content, resolvedImageUrl, item.type]);
 
-  const togglePin = useCallback(async () => {
+  const handlePin = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
     const newPinned = !item.pinned;
     if (user) {
       try {
@@ -285,19 +134,13 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
       localStorage.setItem('guest_clipboard', JSON.stringify(updated));
       useStore.getState().setClipboardItems(updated);
     }
-    toast.success(newPinned ? 'Pinned clip' : 'Unpinned clip');
   }, [item.id, item.pinned, user, isGuest]);
-
-  const handlePin = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await togglePin();
-  }, [togglePin]);
 
   const handleArchive = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     const newArchived = !item.archived;
     await performUpdate({ archived: newArchived });
-
+    
     setUndoAction({
       message: newArchived ? "Snippet archived" : "Snippet restored",
       action: () => performUpdate({ archived: !newArchived }),
@@ -314,7 +157,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   const startDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     await performUpdate({ deleted: true });
-
+    
     setUndoAction({
       message: "Moved to bin",
       action: () => performUpdate({ deleted: false }),
@@ -325,7 +168,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
   const handlePermanentDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Permanently delete this item? This cannot be undone.")) return;
-
+    
     setIsDeleting(true);
     if (user) {
       try {
@@ -348,8 +191,8 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     }
   }, [item.id, item.size, user, isGuest]);
 
-  const handleDownload = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleDownload = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
     if (resolvedImageUrl) {
       const link = document.createElement('a');
       link.href = resolvedImageUrl;
@@ -360,6 +203,28 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     }
   }, [resolvedImageUrl]);
 
+  const handleSaveEdit = useCallback(async () => {
+    if (!editContent.trim()) return;
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'clips', item.id), { 
+          content: editContent.trim(),
+          updatedAt: serverTimestamp() 
+        });
+        toast.success("Clip updated");
+        setIsEditing(false);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/clips/${item.id}`);
+      }
+    } else if (isGuest) {
+      const localItems = JSON.parse(localStorage.getItem('guest_clipboard') || '[]');
+      const updated = localItems.map((i: any) => i.id === item.id ? { ...i, content: editContent.trim() } : i);
+      localStorage.setItem('guest_clipboard', JSON.stringify(updated));
+      useStore.getState().setClipboardItems(updated);
+      toast.success("Updated locally");
+      setIsEditing(false);
+    }
+  }, [item.id, editContent, user, isGuest]);
 
   const handleAnnotateSave = useCallback(async (blob: Blob) => {
     const file = new File([blob], `edit-${Date.now()}.png`, { type: 'image/png' });
@@ -371,30 +236,15 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     });
   }, [user, isGuest]);
 
-
-  const handleSwipeAction = useCallback(async (_event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number } }) => {
-    if (!isMobile || item.deleted) return;
-
-    if (info.offset.x > 90) {
-      await togglePin();
-    } else if (info.offset.x < -90) {
-      await handleArchive({ stopPropagation: () => undefined } as React.MouseEvent);
-    }
-  }, [isMobile, item.deleted, togglePin, handleArchive]);
-
   const cardLabel = null;
 
   return (
     <motion.div
       layout
-      onTap={handleCopy}
-      drag={isMobile && !item.deleted ? 'x' : false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.08}
-      onDragEnd={handleSwipeAction}
+      onClick={handleCopy}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        "group relative bg-bg-secondary border border-border-primary rounded-[28px] overflow-hidden transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-blue-500/30 shadow-sm cursor-pointer touch-pan-y",
+        "group relative bg-bg-secondary border border-border-primary rounded-[28px] overflow-hidden transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-blue-500/30 shadow-sm cursor-pointer",
         item.pinned && "ring-1 ring-orange-500/30 border-orange-500/30",
         isDeleting && "scale-95 opacity-50 grayscale pointer-events-none",
         isCopied && "ring-2 ring-green-500/50 border-green-500/50"
@@ -402,7 +252,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
     >
       <AnimatePresence>
         {isCopied && (
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
@@ -412,13 +262,13 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               <div className="h-12 w-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/40">
                 <Check className="h-6 w-6 text-white" />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600 dark:text-green-400 bg-bg-secondary/80 px-3 py-1 rounded-full backdrop-blur-md">Copied</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600 dark:text-green-400 bg-bg-secondary/80 px-3 py-1 rounded-full backdrop-blur-md">Copied to Vault</span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="p-4 sm:p-5 flex flex-col h-full">
+      <div className="p-4 flex flex-col h-full">
         <div className="flex items-center justify-between mb-3">
            <div className="flex items-center gap-2">
               <div className={cn(
@@ -429,69 +279,50 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
               </div>
               <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">{item.type}</span>
            </div>
-
+           
            <div className={cn(
              "transition-all flex items-center gap-1",
              "lg:opacity-0 group-hover:opacity-100"
            )}>
               {!item.deleted ? (
                 <>
-                  <button
+                  <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      openModal({
-                        id: `clip-preview-${item.id}`,
-                        title: 'Expanded Clip View',
-                        size: 'fullscreen',
-                        hideCloseButton: true,
-                        contentClassName: 'h-full',
-                        content: ({ close }) => (
-                          <ExpandedClipModal
-                            item={item}
-                            imageUrl={resolvedImageUrl}
-                            relativeTime={relativeTime}
-                            onUpdate={performUpdate}
-                            onDownload={handleDownload}
-                            onCopy={handleCopy}
-                            onRestore={handleRestore}
-                            onAnnotate={() => { close(); setIsAnnotating(true); }}
-                            onClose={close}
-                          />
-                        )
-                      });
-                    }}
-                    className="min-h-12 min-w-12 p-3 sm:min-h-0 sm:min-w-0 sm:p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
+                      setIsExpanded(true);
+                    }} 
+                    className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
                     title="Expand View"
                   >
                     <Maximize2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
-                  <button
-                    onClick={handleArchive}
-                    className="min-h-12 min-w-12 p-3 sm:min-h-0 sm:min-w-0 sm:p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
+                  <button 
+                    onClick={handleArchive} 
+                    className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-primary border border-transparent hover:border-border-primary transition-all"
                     title="Archive"
                   >
                     <Archive className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
-                  <button
-                    onClick={handlePin}
+                  <button 
+                    onClick={handlePin} 
                     className={cn(
-                      "min-h-12 min-w-12 p-3 sm:min-h-0 sm:min-w-0 sm:p-2 rounded-lg transition-all border border-transparent",
+                      "p-3 sm:p-2 rounded-lg transition-all border border-transparent", 
                       item.pinned ? "text-orange-500 bg-orange-500/10 border-orange-500/20" : "text-text-muted hover:text-text-primary hover:bg-bg-primary hover:border-border-primary"
                     )}
                     title="Pin"
                   >
                     <Pin className={cn("h-4 w-4 sm:h-3.5 sm:w-3.5", item.pinned && "fill-current")} />
                   </button>
-                  <button onClick={startDelete} className="min-h-12 min-w-12 p-3 sm:min-h-0 sm:min-w-0 sm:p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete">
+                  <button onClick={startDelete} className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete">
                     <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
                 </>
               ) : (
                 <>
-                  <button onClick={handleRestore} className="min-h-12 min-w-12 p-3 sm:min-h-0 sm:min-w-0 sm:p-2 rounded-lg text-text-muted hover:text-green-500 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition-all" title="Restore">
+                  <button onClick={handleRestore} className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-green-500 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition-all" title="Restore">
                     <Clock className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
-                  <button onClick={handlePermanentDelete} className="min-h-12 min-w-12 p-3 sm:min-h-0 sm:min-w-0 sm:p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete Permanently">
+                  <button onClick={handlePermanentDelete} className="p-3 sm:p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all" title="Delete Permanently">
                     <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                   </button>
                 </>
@@ -501,10 +332,10 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
 
         {item.type === 'image' ? (
           <div className="relative rounded-2xl overflow-hidden aspect-video bg-bg-primary border border-border-primary mb-4">
-             <img
-               src={resolvedImageUrl}
-               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-               alt="Snippet"
+             <img 
+               src={resolvedImageUrl} 
+               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+               alt="Snippet" 
                referrerPolicy="no-referrer"
                loading="lazy"
              />
@@ -535,7 +366,7 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
           </div>
         ) : (
           <div className="flex-1 min-h-[100px] mb-4 px-1">
-            <p className="text-text-primary text-[15px] sm:text-sm font-medium leading-relaxed break-words line-clamp-6 whitespace-pre-wrap">
+            <p className="text-text-primary text-sm font-medium leading-relaxed line-clamp-6 whitespace-pre-wrap">
               {item.content}
             </p>
           </div>
@@ -553,11 +384,11 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
 
         <div className="flex items-center gap-2 mt-4">
            {item.type === 'image' && (
-             <button
+             <button 
               onClick={(e) => {
                 e.stopPropagation();
                 setIsAnnotating(true);
-              }}
+              }} 
               className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-bg-primary border border-border-primary text-text-secondary hover:text-blue-500 hover:bg-blue-500/5 hover:border-blue-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
              >
                 <Pencil className="h-3.5 w-3.5" />
@@ -568,8 +399,166 @@ const ClipboardCard = React.memo(({ item }: ClipboardCardProps) => {
       </div>
 
       <AnimatePresence>
+        {isExpanded && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4 lg:p-12 bg-bg-primary/95 backdrop-blur-3xl"
+            onClick={() => setIsExpanded(false)}
+          >
+             <button className="absolute top-6 right-6 lg:top-8 lg:right-8 p-3 lg:p-4 rounded-full bg-bg-secondary/50 text-text-primary hover:bg-bg-secondary transition-all border border-border-primary scale-100 hover:scale-110">
+                <X className="h-6 w-6 lg:h-8 lg:w-8" />
+             </button>
+
+             <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 30 }}
+              className="max-w-6xl w-full h-full flex flex-col lg:flex-row gap-8 lg:gap-12 overflow-y-auto lg:overflow-visible custom-scrollbar"
+              onClick={e => e.stopPropagation()}
+             >
+                <div className={cn(
+                   "flex-1 bg-bg-secondary rounded-[32px] lg:rounded-[48px] border border-border-primary overflow-hidden shadow-2xl relative min-h-[400px] flex flex-col",
+                   isEditing && "ring-2 ring-blue-500"
+                 )}>
+                  {item.type === 'image' ? (
+                    <img src={resolvedImageUrl} className="w-full h-full object-contain" alt="Deep view" referrerPolicy="no-referrer" />
+                  ) : item.checklist ? (
+                    <div className="w-full h-full p-8 lg:p-16 overflow-y-auto custom-scrollbar flex flex-col gap-8">
+                       <div className="space-y-4">
+                          {item.checklist.filter((i: any) => !i.completed).map((task: any) => (
+                             <div 
+                               key={task.id} 
+                               className="flex items-center gap-4 group"
+                               onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const newChecklist = item.checklist.map((i: any) => i.id === task.id ? { ...i, completed: true } : i);
+                                  await performUpdate({ checklist: newChecklist });
+                                  toast.success("Task completed");
+                               }}
+                             >
+                                <div className="h-6 w-6 rounded-lg border-2 border-border-primary group-hover:border-blue-500 transition-colors" />
+                                <span className="text-xl font-medium text-text-primary">{task.text}</span>
+                             </div>
+                          ))}
+                       </div>
+                       {item.checklist.some((i: any) => i.completed) && (
+                          <div className="pt-8 border-t border-border-primary">
+                             <div className="flex items-center gap-4 mb-6">
+                                <span className="text-xs font-black uppercase tracking-widest text-text-muted">Completed Tasks</span>
+                                <div className="h-px flex-1 bg-border-primary" />
+                             </div>
+                             <div className="space-y-4 opacity-50">
+                                {item.checklist.filter((i: any) => i.completed).map((task: any) => (
+                                   <div 
+                                     key={task.id} 
+                                     className="flex items-center gap-4 cursor-pointer"
+                                     onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const newChecklist = item.checklist.map((i: any) => i.id === task.id ? { ...i, completed: false } : i);
+                                        await performUpdate({ checklist: newChecklist });
+                                        toast.success("Task restored");
+                                     }}
+                                   >
+                                      <div className="h-6 w-6 rounded-lg bg-blue-500 flex items-center justify-center border-2 border-blue-500">
+                                         <Check className="h-4 w-4 text-white" />
+                                      </div>
+                                      <span className="text-xl font-medium text-text-muted line-through decoration-blue-500/50">{task.text}</span>
+                                   </div>
+                                ))}
+                             </div>
+                          </div>
+                       )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full p-8 lg:p-16 overflow-y-auto custom-scrollbar flex flex-col h-full">
+                      {isEditing ? (
+                        <textarea
+                          autoFocus
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="w-full flex-1 bg-transparent border-none focus:ring-0 text-text-primary text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap resize-none no-scrollbar"
+                          placeholder="Edit your clip..."
+                        />
+                      ) : (
+                        <div className="text-text-primary text-lg lg:text-2xl font-medium leading-relaxed whitespace-pre-wrap">
+                          {item.content}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                   {!item.deleted && (
+                    <div className="absolute bottom-6 right-6 lg:bottom-10 lg:right-10 flex items-center gap-4">
+                      {item.type === 'text' && (
+                        <button 
+                          onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)} 
+                          className={cn(
+                            "flex items-center gap-3 px-6 lg:px-10 py-3 lg:py-5 rounded-2xl lg:rounded-[24px] font-black text-xs lg:text-sm transition-all active:scale-95 shadow-2xl",
+                            isEditing ? "bg-green-500 hover:bg-green-600 text-white" : "bg-bg-primary/50 hover:bg-bg-primary text-text-primary backdrop-blur-xl border border-border-primary"
+                          )}
+                        >
+                           {isEditing ? <Check className="h-4 lg:h-5 lg:w-5" /> : <Pencil className="h-4 lg:h-5 lg:w-5" />}
+                           {isEditing ? "Save Changes" : "Edit Note"}
+                        </button>
+                      )}
+                      {item.type === 'image' && (
+                        <button onClick={() => setIsAnnotating(true)} className="flex items-center gap-3 px-6 lg:px-10 py-3 lg:py-5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl lg:rounded-[24px] font-black text-xs lg:text-sm transition-all active:scale-95 shadow-2xl">
+                           <Pencil className="h-4 lg:h-5 lg:w-5" />
+                           Draw / Annotate
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full lg:w-96 flex flex-col gap-6 lg:gap-8 pb-8 lg:pb-0">
+                   <div className="space-y-2">
+                      <h2 className="text-2xl lg:text-3xl font-black text-text-primary tracking-tight">Snippet Insights</h2>
+                      <p className="text-text-muted font-bold uppercase tracking-widest text-[10px]">Captured {relativeTime}</p>
+                   </div>
+
+                   <div className="space-y-4">
+                      <div className="p-6 rounded-[28px] bg-bg-primary border border-border-primary space-y-4 shadow-xl">
+                         <div className="flex items-center justify-between text-neutral-400">
+                            <span className="text-[10px] font-black uppercase tracking-widest">Digital Weight</span>
+                            <span className="text-sm font-black text-white">{formatBytes(item.size || 0)}</span>
+                         </div>
+                         <div className="flex items-center justify-between text-neutral-400">
+                            <span className="text-[10px] font-black uppercase tracking-widest">MIME Type</span>
+                            <span className="text-sm font-black text-white uppercase">{item.type}</span>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="mt-auto space-y-3 lg:space-y-4">
+                      {!item.deleted ? (
+                        <>
+                          <button onClick={handleDownload} className="w-full flex items-center justify-center gap-3 py-5 rounded-[24px] bg-bg-primary border border-border-primary text-text-primary hover:bg-text-primary hover:text-bg-primary font-black text-xs transition-all hover:scale-[1.02]">
+                            <Download className="h-5 w-5" />
+                            Download Original
+                          </button>
+                          <button onClick={handleCopy} className="w-full flex items-center justify-center gap-3 py-5 rounded-[24px] bg-blue-500 text-white font-black text-xs transition-all hover:scale-[1.02] shadow-2xl border border-blue-400/20">
+                            <Copy className="h-5 w-5" />
+                            Copy Clip
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={handleRestore} className="w-full flex items-center justify-center gap-3 py-5 rounded-[24px] bg-green-500 text-white font-black text-xs transition-all hover:scale-[1.02] shadow-2xl border border-green-400/20">
+                          <RotateCcw className="h-5 w-5" />
+                          Restore Item
+                        </button>
+                      )}
+                   </div>
+                </div>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {isAnnotating && (
-          <DrawingCanvas
+          <DrawingCanvas 
             initialImage={resolvedImageUrl}
             onClose={() => setIsAnnotating(false)}
             onSave={handleAnnotateSave}

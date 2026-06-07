@@ -1,39 +1,78 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  Plus,
-  StickyNote,
-  Zap,
-  Settings,
-  LogOut,
+import { 
+  Plus, 
+  StickyNote, 
+  Image as ImageIcon, 
+  Zap, 
+  Settings, 
+  LogOut, 
+  Clipboard,
   X,
+  Loader2
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../utils/utils';
 import { signOut } from '../../services/auth';
 import { toast } from 'sonner';
+import { handleGlobalPaste } from '../../services/pasteService';
 
 const FloatingHub = () => {
-  const {
-    user,
-    isGuest,
-    theme,
+  const { 
+    user, 
+    isGuest, 
+    theme, 
     setIsNoteEditorOpen,
-    isMobile
+    isMobile,
+    setIsSettingsOpen
   } = useStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [isPasting, setIsPasting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handlePaste = async () => {
+    if (isPasting) return;
+    setIsPasting(true);
+    await handleGlobalPaste();
+    setIsPasting(false);
+    setIsOpen(false);
+  };
+
+  useEffect(() => {
+    const handleMobilePaste = () => handlePaste();
+    window.addEventListener('clipboard-paste-mobile', handleMobilePaste);
+    return () => window.removeEventListener('clipboard-paste-mobile', handleMobilePaste);
+  }, [user, isGuest]);
 
   const actions = [
-    {
-      id: 'note',
-      icon: StickyNote,
-      label: 'New Snippet',
+    { 
+      id: 'paste',
+      icon: isPasting ? Loader2 : Clipboard,
+      label: 'Paste Now',
+      color: 'bg-green-500',
+      desc: isMobile ? 'Cloud Sync Paste' : 'Desktop Link',
+      mobileOnly: true,
+      action: handlePaste
+    },
+    { 
+      id: 'note', 
+      icon: StickyNote, 
+      label: 'New Snippet', 
       color: 'bg-blue-500',
       desc: 'Instant text fragment',
       action: () => {
         setIsNoteEditorOpen(true);
+        setIsOpen(false);
+      }
+    },
+    { 
+      id: 'upload', 
+      icon: ImageIcon, 
+      label: 'Upload Media', 
+      color: 'bg-indigo-500',
+      desc: 'Capture reference',
+      action: () => {
+        fileInputRef.current?.click();
         setIsOpen(false);
       }
     },
@@ -57,11 +96,11 @@ const FloatingHub = () => {
       "fixed z-[120] font-['Poppins']",
       isMobile ? "bottom-24 right-6" : "bottom-8 right-8"
     )}>
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept="image/*"
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
         onChange={handleFileChange}
       />
 
@@ -87,7 +126,7 @@ const FloatingHub = () => {
                 <div className="px-3 py-2 mb-2 border-b border-border-primary/50">
                   <span className="text-[9px] font-black uppercase tracking-[0.3em] text-text-secondary/60">Quick Actions</span>
                 </div>
-
+                
                 {actions.map((action) => (
                   <button
                     key={action.id}
@@ -106,9 +145,9 @@ const FloatingHub = () => {
                     </div>
                   </button>
                 ))}
-
+                
                 {!isGuest && (
-                  <button
+                  <button 
                   onClick={() => signOut()}
                   className="mt-2 flex items-center gap-3 p-3 rounded-2xl text-red-500 hover:bg-red-500/10 transition-all text-left group"
                   >
@@ -155,7 +194,7 @@ const FloatingHub = () => {
             </motion.div>
           )}
         </AnimatePresence>
-
+        
         {/* Subtle Glow */}
         {!isOpen && (
            <div className="absolute inset-0 rounded-2xl bg-blue-400/20 blur-xl animate-pulse -z-10" />
