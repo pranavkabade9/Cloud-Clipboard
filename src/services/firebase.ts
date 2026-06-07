@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { 
-  getAuth, 
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
   GoogleAuthProvider, 
   signInWithPopup, 
   signOut, 
@@ -47,6 +49,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+if (typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.warn('[Firebase Auth] Failed to enable local auth persistence:', error);
+  });
+}
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 // Enable persistence for better offine/online sync

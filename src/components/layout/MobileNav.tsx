@@ -1,76 +1,73 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { motion } from 'motion/react';
-import { 
-  LayoutGrid, 
-  StickyNote, 
-  Image as ImageIcon, 
-  Bell,
-  Sun,
-  Moon,
-  Star,
-  Menu
+import {
+  LayoutGrid,
+  StickyNote,
+  Search,
+  Archive,
+  Settings
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../utils/utils';
+import SettingsDropdown from './SettingsDropdown';
+import { useModal } from '../ui/ModalProvider';
 
 const MobileNav = () => {
-  const { activeFilter, setActiveFilter, theme, toggleTheme, setIsSidebarOpen, isMobile } = useStore();
+  const { activeFilter, setActiveFilter, setIsManageDataOpen } = useStore();
+  const { openModal } = useModal();
+
+  const openSearch = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('cloudclip-open-search'));
+  }, []);
+
+  const openSettings = useCallback(() => {
+    setIsManageDataOpen(false);
+    openModal({
+      id: 'mobile-settings',
+      title: 'Settings',
+      size: 'sm',
+      hideCloseButton: true,
+      contentClassName: 'max-h-[min(820px,calc(100dvh-24px))]',
+      content: ({ close }) => <SettingsDropdown onClose={close} />,
+      onClose: () => useStore.getState().setIsManageDataOpen(false)
+    });
+  }, [openModal, setIsManageDataOpen]);
 
   const navItems = [
-    { id: 'all', icon: LayoutGrid, label: 'Vault' },
-    { id: 'notes', icon: StickyNote, label: 'Notes' },
-    { id: 'pinned', icon: Star, label: 'Pinned' },
-    { id: 'images', icon: ImageIcon, label: 'Media' },
-  ].filter(item => isMobile ? item.id !== 'pinned' : true); // Hide pinned on very small mobile nav to save space if needed, or just let them scroll. Actually, let's keep it but make it tighter.
+    { id: 'all', icon: LayoutGrid, label: 'Everything', action: () => setActiveFilter('all'), active: activeFilter === 'all' },
+    { id: 'notes', icon: StickyNote, label: 'Notes', action: () => setActiveFilter('notes'), active: activeFilter === 'notes' },
+    { id: 'search', icon: Search, label: 'Search', action: openSearch, active: false },
+    { id: 'archived', icon: Archive, label: 'Archive', action: () => setActiveFilter('archived'), active: activeFilter === 'archived' },
+    { id: 'settings', icon: Settings, label: 'Settings', action: openSettings, active: false },
+  ];
 
   return (
-    <div className="fixed bottom-6 left-0 right-0 z-[100] px-4 flex justify-center pointer-events-none">
-      <div className="flex items-center gap-3 pointer-events-auto">
-        <nav className="flex items-center gap-1 p-1.5 rounded-[32px] border border-border-primary bg-bg-secondary/90 backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500">
-          {navItems.map((item) => {
-            const isActive = activeFilter === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveFilter(item.id)}
-                className="relative p-3.5 sm:p-4 outline-none group"
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="mobile-nav-pill"
-                    className="absolute inset-1.5 bg-blue-500/10 rounded-2xl"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <item.icon className={cn(
-                  "h-5 w-5 transition-all duration-300 relative z-10",
-                  isActive 
-                    ? "text-blue-500 scale-110" 
-                    : "text-text-secondary group-active:scale-90"
-                )} />
-                <span className={cn(
-                  "absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-bg-secondary border border-border-primary text-[8px] font-black uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none scale-0 group-hover:scale-100 origin-bottom duration-300",
-                  isActive && "text-blue-500"
-                )}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-          
-          <div className="w-px h-6 bg-border-primary mx-1 opacity-50" />
-          
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-3.5 sm:p-4 rounded-2xl transition-all relative overflow-hidden group bg-bg-primary border border-border-primary/50"
-          >
-            <Menu className="h-5 w-5 text-text-secondary relative z-10" />
-            <motion.div 
-              className="absolute inset-0 bg-blue-500/0 group-active:bg-blue-500/10 transition-colors"
-            />
-          </button>
-        </nav>
-      </div>
+    <div className="fixed inset-x-0 bottom-0 z-[120] px-3 pb-[calc(env(safe-area-inset-bottom)+10px)] pt-3 pointer-events-none lg:hidden">
+      <nav className="mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[28px] border border-border-primary bg-bg-secondary/95 p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-3xl pointer-events-auto">
+        {navItems.map((item) => {
+          const isActive = item.active;
+          return (
+            <button
+              key={item.id}
+              onClick={item.action}
+              className="relative flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 outline-none transition-all active:scale-95"
+              aria-label={item.label}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="mobile-nav-pill"
+                  className="absolute inset-1 rounded-2xl bg-blue-500/12"
+                  transition={{ type: 'spring', bounce: 0.18, duration: 0.45 }}
+                />
+              )}
+              <item.icon className={cn('relative z-10 h-5 w-5 transition-colors', isActive ? 'text-blue-500' : 'text-text-secondary')} />
+              <span className={cn('relative z-10 truncate text-[9px] font-black uppercase tracking-tight', isActive ? 'text-blue-500' : 'text-text-muted')}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };

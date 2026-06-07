@@ -2,10 +2,10 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ClipboardCard from './ClipboardCard';
 import { useStore } from '../../store/useStore';
-import { 
-  Zap, 
-  Clock, 
-  Inbox, 
+import {
+  Zap,
+  Clock,
+  Inbox,
   Star,
   Loader2
 } from 'lucide-react';
@@ -21,8 +21,6 @@ const ClipboardGrid = () => {
       items = items.filter(item => !item.archived && !item.deleted);
     } else if (activeFilter === 'notes') {
       items = items.filter(item => item.type === 'text' && !item.archived && !item.deleted);
-    } else if (activeFilter === 'images') {
-      items = items.filter(item => item.type === 'image' && !item.archived && !item.deleted);
     } else if (activeFilter === 'pinned') {
       items = items.filter(item => item.pinned && !item.deleted);
     } else if (activeFilter === 'recent') {
@@ -39,8 +37,8 @@ const ClipboardGrid = () => {
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      items = items.filter(item => 
-        item.content?.toLowerCase().includes(query) || 
+      items = items.filter(item =>
+        item.content?.toLowerCase().includes(query) ||
         item.imageUrl?.toLowerCase().includes(query)
       );
     }
@@ -53,7 +51,7 @@ const ClipboardGrid = () => {
 
   if (filteredItems.length === 0 && uploadingItems.length === 0) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center justify-center py-32 space-y-6"
@@ -87,7 +85,7 @@ const ClipboardGrid = () => {
               <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted">Pinned</h2>
               <div className="flex-1 h-px bg-border-primary/50" />
            </div>
-           
+
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
                 {pinnedItems.map((item) => (
@@ -120,23 +118,23 @@ const ClipboardGrid = () => {
                   onClick={async () => {
                     const confirmed = window.confirm("Empty Bin? This will permanently delete all items in the bin and remove their storage footprint.");
                     if (!confirmed) return;
-                    
+
                     const { user, isGuest, clipboardItems } = useStore.getState();
                     const deletedItems = clipboardItems.filter(i => i.deleted);
-                    
+
                     try {
                       if (user) {
                         const { deleteDoc, doc, setDoc, increment } = await import('firebase/firestore');
                         const { deleteObject, ref } = await import('firebase/storage');
                         const { db, storage } = await import('../../services/firebase');
-                        
+
                         let totalSizeFreed = 0;
-                        
+
                         await Promise.all(deletedItems.map(async (item) => {
                           // Delete from Firestore
                           await deleteDoc(doc(db, 'users', user.uid, 'clips', item.id));
                           totalSizeFreed += item.size || 0;
-                          
+
                           // If it's an image, delete from Storage
                           if (item.type === 'image' && item.metadata?.storagePath) {
                             try {
@@ -152,13 +150,13 @@ const ClipboardGrid = () => {
                         await setDoc(doc(db, 'users', user.uid), {
                           storageUsed: increment(-totalSizeFreed)
                         }, { merge: true });
-                        
+
                       } else if (isGuest) {
                         const remaining = clipboardItems.filter(i => !i.deleted);
                         localStorage.setItem('guest_clipboard', JSON.stringify(remaining));
                         useStore.getState().setClipboardItems(remaining);
                       }
-                      
+
                       import('sonner').then(({ toast }) => toast.success("Bin cleared successfully"));
                     } catch (error) {
                       console.error("Error emptying bin:", error);
@@ -192,7 +190,7 @@ const ClipboardGrid = () => {
                     )}
                     <div className="relative z-10 flex flex-col items-center gap-3">
                       <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Processing media...</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Processing image...</span>
                     </div>
                   </motion.div>
                 ))}

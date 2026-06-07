@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import UndoSnackbar from './components/ui/UndoSnackbar';
 import InstallPrompt from './components/layout/InstallPrompt';
+import { ModalProvider } from './components/ui/ModalProvider';
 
 import { cn } from './utils/utils';
 
@@ -20,7 +21,7 @@ export default function App() {
     };
     const handleOffline = () => {
       setIsOffline(true);
-      toast.error("Offline Mode", { 
+      toast.error("Offline Mode", {
         description: "Viewing cached fragments. Edits will sync when online.",
         duration: Infinity
       });
@@ -69,11 +70,12 @@ export default function App() {
   }
 
   return (
+    <ModalProvider>
     <div className="min-h-screen font-sans transition-colors duration-300 bg-bg-primary text-text-primary">
       {(user || isGuest) ? <Dashboard /> : <LandingPage />}
       <UndoSnackbar />
       <InstallPrompt />
-      <Toaster 
+      <Toaster
         theme={theme}
         position={isMobile ? "top-center" : "bottom-center"}
         toastOptions={{
@@ -83,5 +85,6 @@ export default function App() {
         }}
       />
     </div>
+    </ModalProvider>
   );
 }

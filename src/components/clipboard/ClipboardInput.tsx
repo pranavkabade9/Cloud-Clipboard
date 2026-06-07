@@ -1,19 +1,17 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  type Image as ImageIcon, 
-  Plus, 
-  Send, 
-  X, 
-  Clipboard as ClipboardIcon, 
-  Paperclip, 
-  Layout, 
+import {
+  Plus,
+  Send,
+  X,
+  Clipboard as ClipboardIcon,
+  Paperclip,
+  Layout,
   Upload,
   CheckSquare,
   Pencil,
   Sparkles,
-  Command,
-  Image as LucideImage
+  Command
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '../../store/useStore';
@@ -34,7 +32,7 @@ const ClipboardInput = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isDrawingOpen, setIsDrawingOpen] = useState(false);
   const [initialDrawingImage, setInitialDrawingImage] = useState<string | undefined>(undefined);
-  
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +52,7 @@ const ClipboardInput = () => {
 
   const saveToClipboard = async (data: any) => {
     const itemSize = data.type === 'text' ? new Blob([data.content]).size : data.size || 0;
-    
+
     if (user && userProfile) {
       if (userProfile.storageUsed + itemSize > storageLimit) {
         toast.error("Storage limit reached! Please delete some items.");
@@ -71,9 +69,9 @@ const ClipboardInput = () => {
           size: itemSize,
           pinned: false,
         };
-        
+
         await addDoc(collection(db, 'users', user.uid, 'clips'), itemData);
-        
+
         await setDoc(doc(db, 'users', user.uid), {
           storageUsed: increment(itemSize),
           updatedAt: serverTimestamp(),
@@ -156,14 +154,14 @@ const ClipboardInput = () => {
   }, [content]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="w-full max-w-2xl relative font-['Poppins']"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <motion.div 
+      <motion.div
         layout
         className={cn(
           "w-full bg-bg-secondary border border-border-primary rounded-[28px] overflow-hidden transition-all duration-300 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)]",
@@ -173,25 +171,15 @@ const ClipboardInput = () => {
       >
         <div className="flex flex-col">
           {/* Top Bar for Mode selection */}
-          <div className="flex items-center gap-1.5 px-4 pt-4 pb-1 overflow-x-auto no-scrollbar">
+          <div className="flex flex-wrap items-center gap-1.5 px-4 pt-4 pb-1">
              <ModeButton active={!isExpanded} onClick={() => { setIsExpanded(true); inputRef.current?.focus(); }} icon={Command} label="Note" />
              <ModeButton active={false} onClick={() => {
                globalThis.dispatchEvent(new CustomEvent('open-note-editor', { detail: { mode: 'checklist' } }));
              }} icon={CheckSquare} label="Checklist" />
              <ModeButton active={false} onClick={() => setIsDrawingOpen(true)} icon={Pencil} label="Sketch" />
-             <ModeButton active={false} onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.onchange = (e) => {
-                  const file = (e.target as HTMLInputElement).files?.[0];
-                  if (file) handleImageFile(file);
-                };
-                input.click();
-             }} icon={LucideImage} label="Media" />
              <div className="flex-1" />
              {isExpanded && (
-               <button 
+               <button
                  onClick={() => {
                    setContent('');
                    setIsExpanded(false);
@@ -204,7 +192,7 @@ const ClipboardInput = () => {
           </div>
 
           <div className="flex items-start gap-3 px-5 py-2">
-             <textarea 
+             <textarea
                ref={inputRef}
                value={content}
                onChange={(e) => setContent(e.target.value)}
@@ -217,7 +205,7 @@ const ClipboardInput = () => {
 
           <AnimatePresence>
             {isExpanded && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -228,7 +216,7 @@ const ClipboardInput = () => {
                 </div>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <button 
+                  <button
                     disabled={(!content.trim() && !isUploading) || isUploading}
                     onClick={handleTextSubmit}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-30 px-10 py-3.5 rounded-[22px] text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 shadow-2xl shadow-blue-500/20"
@@ -246,7 +234,7 @@ const ClipboardInput = () => {
       {/* Drawing Overlay */}
       <AnimatePresence>
         {isDrawingOpen && (
-          <DrawingCanvas 
+          <DrawingCanvas
             onClose={() => {
               setIsDrawingOpen(false);
               setInitialDrawingImage(undefined);
@@ -260,7 +248,7 @@ const ClipboardInput = () => {
       {/* Drop zone overlay */}
       <AnimatePresence>
         {isDragging && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -280,12 +268,12 @@ const ClipboardInput = () => {
 };
 
 const ModeButton = ({ active, onClick, icon: Icon, label }: any) => (
-  <button 
+  <button
     onClick={onClick}
     className={cn(
-      "flex items-center gap-2 px-4 py-3 sm:py-2 rounded-xl text-[11px] sm:text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95",
-      active 
-        ? "bg-blue-500/10 text-blue-500 decoration-blue-500/30" 
+      "flex min-h-12 items-center gap-2 px-4 py-3 sm:py-2 rounded-xl text-[11px] sm:text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95",
+      active
+        ? "bg-blue-500/10 text-blue-500 decoration-blue-500/30"
         : "text-text-secondary hover:bg-bg-primary hover:text-text-primary"
     )}
   >
